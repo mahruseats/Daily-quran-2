@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Daily Quran</string>
+    <string name="quran">Quran</string>
+    <string name="surahs">Surahs</string>
+    <string name="juz_para">Para / Juz</string>
+    <string name="prayer_times">Prayer Times</string>
+    <string name="rabbana_duas">Rabbana Duas</string>
+    <string name="search_surah_hint">Search Surah (e.g. Fatihah, 1, বাকারা, البقرة)</string>
+    <string name="tafsir">Tafsir</string>
+    <string name="word_by_word">Word by Word</string>
+    <string name="english">English</string>
+    <string name="bangla">বাংলা</string>
+    <string name="offline_recitation">Offline Audio</string>
+</resources>

@@ -1,0 +1,6 @@
+{
+  "name": "Daily Quran",
+  "description": "Comprehensive Quran app with word-by-word Bangla & English meanings, audio recitation with offline support, prayer times, multilingual tafsir, and Rabbana duas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
