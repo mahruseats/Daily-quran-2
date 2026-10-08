@@ -50,17 +50,23 @@ import androidx.compose.ui.unit.sp
 import com.example.ads.AdMobManager
 import com.example.data.model.RabbanaDua
 import com.example.data.source.RabbanaDuasData
+import com.example.ui.theme.TimesRomanFontFamily
+import com.example.ui.util.AppStrings
 import com.example.ui.viewmodel.QuranViewModel
+import com.example.ui.viewmodel.TranslationDisplayMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RabbanaDuasScreen(
     viewModel: QuranViewModel,
+    translationLanguage: TranslationDisplayMode = TranslationDisplayMode.BOTH,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
     val duas = RabbanaDuasData.duas
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
 
     // Exit requirement with Interstitial ad
     fun handleExit() {
@@ -83,12 +89,14 @@ fun RabbanaDuasScreen(
                 title = {
                     Column {
                         Text(
-                            text = "৪০টি রাব্বানা দোয়া (Rabbana Duas)",
+                            text = AppStrings.duasTitle(translationLanguage),
+                            fontFamily = font,
                             fontWeight = FontWeight.Bold,
                             fontSize = 17.sp
                         )
                         Text(
-                            text = "কুরআনুল কারীম থেকে সংকলিত সকল দোয়া",
+                            text = AppStrings.duasSubtitle(translationLanguage),
+                            fontFamily = font,
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -117,6 +125,7 @@ fun RabbanaDuasScreen(
             items(duas, key = { it.id }) { dua ->
                 RabbanaDuaCard(
                     dua = dua,
+                    translationLanguage = translationLanguage,
                     onPlayAudio = { viewModel.playRabbanaDuaAudio(dua) }
                 )
             }
@@ -131,9 +140,12 @@ fun RabbanaDuasScreen(
 @Composable
 fun RabbanaDuaCard(
     dua: RabbanaDua,
+    translationLanguage: TranslationDisplayMode = TranslationDisplayMode.BOTH,
     onPlayAudio: () -> Unit
 ) {
     val context = LocalContext.current
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
 
     Card(
         modifier = Modifier
@@ -167,6 +179,7 @@ fun RabbanaDuaCard(
                             text = "${dua.id}",
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
+                            fontFamily = font,
                             color = MaterialTheme.colorScheme.secondary
                         )
                     }
@@ -174,8 +187,14 @@ fun RabbanaDuaCard(
                     Spacer(modifier = Modifier.width(10.dp))
 
                     Text(
-                        text = "সূরা ${dua.surahNameBangla} (${dua.ayahReference})",
+                        text = AppStrings.duaSurahRef(
+                            mode = translationLanguage,
+                            surahEng = dua.surahNameEnglish,
+                            surahBan = dua.surahNameBangla,
+                            ref = dua.ayahReference
+                        ),
                         fontWeight = FontWeight.SemiBold,
+                        fontFamily = font,
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -196,12 +215,14 @@ fun RabbanaDuaCard(
                     IconButton(
                         onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText(
-                                "Rabbana Dua #${dua.id}",
+                            val clipText = if (isEng) {
+                                "${dua.arabicText}\n\nEnglish: ${dua.englishTranslation}\n\nReference: Surah ${dua.surahNameEnglish} (${dua.ayahReference})"
+                            } else {
                                 "${dua.arabicText}\n\nউচ্চারণ: ${dua.banglaPronunciation}\n\nঅর্থ: ${dua.banglaTranslation}\n\nEnglish: ${dua.englishTranslation}\n\nসূত্র: সূরা ${dua.surahNameBangla} (${dua.ayahReference})"
-                            )
+                            }
+                            val clip = ClipData.newPlainText("Rabbana Dua #${dua.id}", clipText)
                             clipboard.setPrimaryClip(clip)
-                            Toast.makeText(context, "Dua copied to clipboard", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, AppStrings.duaCopiedToast(translationLanguage), Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.size(36.dp)
                     ) {
@@ -219,9 +240,10 @@ fun RabbanaDuaCard(
             // Arabic Text
             Text(
                 text = dua.arabicText,
-                fontSize = 22.sp,
-                lineHeight = 36.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontFamily = com.example.ui.theme.QuranArabicFontFamily,
+                fontSize = 24.sp,
+                lineHeight = 40.sp,
+                fontWeight = FontWeight.Normal,
                 textAlign = TextAlign.Right,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.fillMaxWidth()
@@ -231,33 +253,52 @@ fun RabbanaDuaCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Bangla Pronunciation (উচ্চারণ)
-            Text(
-                text = "উচ্চারণ: ${dua.banglaPronunciation}",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Bangla Translation
-            Text(
-                text = "অর্থ: ${dua.banglaTranslation}",
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // English Translation
-            Text(
-                text = "English: ${dua.englishTranslation}",
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Pronunciation & Meaning according to translationLanguage
+            if (translationLanguage == TranslationDisplayMode.BANGLA_ONLY) {
+                Text(
+                    text = "${AppStrings.pronunciationPrefix(translationLanguage)}${dua.banglaPronunciation}",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "${AppStrings.translationPrefix(translationLanguage)}${dua.banglaTranslation}",
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            } else if (translationLanguage == TranslationDisplayMode.ENGLISH_ONLY) {
+                Text(
+                    text = "${AppStrings.translationPrefix(translationLanguage)}${dua.englishTranslation}",
+                    fontFamily = TimesRomanFontFamily,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            } else {
+                Text(
+                    text = "${AppStrings.pronunciationPrefix(translationLanguage)}${dua.banglaPronunciation}",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "অর্থ: ${dua.banglaTranslation}",
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "English: ${dua.englishTranslation}",
+                    fontFamily = TimesRomanFontFamily,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             // Context and Virtues
             if (dua.contextAndBenefits.isNotEmpty()) {
@@ -272,7 +313,8 @@ fun RabbanaDuaCard(
                         .padding(8.dp)
                 ) {
                     Text(
-                        text = "ফযিলত ও প্রেক্ষাপট: ${dua.contextAndBenefits}",
+                        text = "${AppStrings.virtuesPrefix(translationLanguage)}${dua.contextAndBenefits}",
+                        fontFamily = font,
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -11,4 +11,8 @@
     <string name="english">English</string>
     <string name="bangla">বাংলা</string>
     <string name="offline_recitation">Offline Audio</string>
+
+    <!-- Google App ID to satisfy Firebase Analytics initialization and prevent missing google_app_id error -->
+    <string name="google_app_id" translatable="false">1:100000000000:android:0000000000000000000000</string>
+    <string name="gcm_defaultSenderId" translatable="false">100000000000</string>
 </resources>

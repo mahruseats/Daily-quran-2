@@ -2,8 +2,10 @@ package com.example.audio
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.PlaybackParams
+import android.media.audiofx.LoudnessEnhancer
 import android.os.Build
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +39,7 @@ data class AudioPlayerState(
 
 class QuranAudioPlayer(private val context: Context) {
     private var mediaPlayer: MediaPlayer? = null
+    private var loudnessEnhancer: LoudnessEnhancer? = null
     private val scope = CoroutineScope(Dispatchers.Main + Job())
     private var progressJob: Job? = null
 
@@ -113,6 +116,30 @@ class QuranAudioPlayer(private val context: Context) {
                             totalDurationMs = mp.duration,
                             isOfflineMode = isLocal
                         )
+                        // Maximize player volume
+                        try {
+                            mp.setVolume(1.0f, 1.0f)
+                            loudnessEnhancer?.release()
+                            loudnessEnhancer = LoudnessEnhancer(mp.audioSessionId).apply {
+                                setTargetGain(600) // +6 dB gain boost for loud and crisp Quran recitation
+                                enabled = true
+                            }
+                        } catch (e: Exception) {
+                            Log.w("QuranAudioPlayer", "Could not attach LoudnessEnhancer: ${e.message}")
+                        }
+
+                        // Ensure system media stream volume is sufficiently high
+                        try {
+                            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                            audioManager?.let { am ->
+                                val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                                val currentVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+                                if (currentVol < (maxVol * 0.8).toInt()) {
+                                    am.setStreamVolume(AudioManager.STREAM_MUSIC, (maxVol * 0.85).toInt(), 0)
+                                }
+                            }
+                        } catch (_: Exception) {}
+
                         applyPlaybackSpeed(_state.value.playbackSpeed)
                         mp.start()
                         startProgressTracking()
@@ -256,9 +283,27 @@ class QuranAudioPlayer(private val context: Context) {
         }
     }
 
-    fun release() {
+    fun stopAndClose() {
         stopProgressTracking()
-        mediaPlayer?.release()
+        try {
+            loudnessEnhancer?.release()
+            loudnessEnhancer = null
+        } catch (_: Exception) {}
+        try {
+            mediaPlayer?.stop()
+            mediaPlayer?.reset()
+            mediaPlayer?.release()
+        } catch (e: Exception) {
+            Log.w("QuranAudioPlayer", "Error closing media player", e)
+        }
         mediaPlayer = null
+        _state.value = AudioPlayerState(
+            downloadedSurahs = _state.value.downloadedSurahs,
+            playbackSpeed = _state.value.playbackSpeed
+        )
+    }
+
+    fun release() {
+        stopAndClose()
     }
 }

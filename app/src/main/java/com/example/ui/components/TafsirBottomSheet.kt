@@ -37,16 +37,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.Ayah
 import com.example.data.model.Surah
+import com.example.ui.viewmodel.TranslationDisplayMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TafsirBottomSheet(
     ayah: Ayah,
     surah: Surah,
+    translationMode: TranslationDisplayMode = TranslationDisplayMode.BOTH,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val isEnglishMode = translationMode == TranslationDisplayMode.ENGLISH_ONLY
+    var selectedTabIndex by remember { mutableIntStateOf(if (isEnglishMode) 1 else 0) }
     val tabs = listOf("বাংলা তাফসীর", "English Tafsir")
 
     ModalBottomSheet(
@@ -68,13 +71,13 @@ fun TafsirBottomSheet(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "তাফসীর ও ব্যাখ্যা (Tafsir)",
+                        text = if (isEnglishMode) "Tafsir & Commentary" else "তাফসীর ও ব্যাখ্যা",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "${surah.nameEnglish} (${surah.nameBangla}) • আয়াত ${ayah.number}",
+                        text = if (isEnglishMode) "${surah.nameEnglish} • Verse ${ayah.number}" else "${surah.nameBangla} • আয়াত ${ayah.number}",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -102,8 +105,9 @@ fun TafsirBottomSheet(
             ) {
                 Text(
                     text = ayah.textArabic,
-                    fontSize = 20.sp,
-                    lineHeight = 32.sp,
+                    fontFamily = com.example.ui.theme.QuranArabicFontFamily,
+                    fontSize = 22.sp,
+                    lineHeight = 38.sp,
                     textAlign = TextAlign.Right,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.fillMaxWidth()
@@ -176,6 +180,7 @@ fun TafsirBottomSheet(
                     // English Tafsir
                     Text(
                         text = "Tafsir Ibn Kathir / Quranic Exegesis",
+                        fontFamily = com.example.ui.theme.TimesRomanFontFamily,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.secondary
@@ -185,6 +190,7 @@ fun TafsirBottomSheet(
                         text = ayah.tafsirEnglish.ifEmpty {
                             "Commentary & Context: This verse provides foundational lessons on Tawhid, moral conduct, and devotion to the Creator. Classical commentators emphasize reflection (Tadabbur) upon its timeless guidance."
                         },
+                        fontFamily = com.example.ui.theme.TimesRomanFontFamily,
                         fontSize = 15.sp,
                         lineHeight = 24.sp,
                         color = MaterialTheme.colorScheme.onSurface
@@ -196,6 +202,7 @@ fun TafsirBottomSheet(
 
                     Text(
                         text = "English Translation:",
+                        fontFamily = com.example.ui.theme.TimesRomanFontFamily,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -203,7 +210,9 @@ fun TafsirBottomSheet(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = ayah.translationEnglish,
+                        fontFamily = com.example.ui.theme.TimesRomanFontFamily,
                         fontSize = 14.sp,
+                        lineHeight = 20.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }

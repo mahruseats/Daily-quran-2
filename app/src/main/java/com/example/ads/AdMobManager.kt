@@ -71,11 +71,37 @@ object AdMobManager {
         )
     }
 
+    private fun isEmulator(): Boolean {
+        val finger = android.os.Build.FINGERPRINT ?: ""
+        val model = android.os.Build.MODEL ?: ""
+        val manufacturer = android.os.Build.MANUFACTURER ?: ""
+        val brand = android.os.Build.BRAND ?: ""
+        val device = android.os.Build.DEVICE ?: ""
+        val product = android.os.Build.PRODUCT ?: ""
+        val hardware = android.os.Build.HARDWARE ?: ""
+
+        return finger.startsWith("generic")
+                || finger.startsWith("unknown")
+                || model.contains("google_sdk", ignoreCase = true)
+                || model.contains("Emulator", ignoreCase = true)
+                || model.contains("Android SDK built for x86", ignoreCase = true)
+                || manufacturer.contains("Genymotion", ignoreCase = true)
+                || (brand.startsWith("generic") && device.startsWith("generic"))
+                || product.contains("sdk", ignoreCase = true)
+                || hardware.contains("goldfish", ignoreCase = true)
+                || hardware.contains("ranchu", ignoreCase = true)
+    }
+
     /**
      * Pops interstitial ad when user exits a Surah or Rabbana Duas.
      * Always ensures the onDismiss callback runs so navigation is never blocked.
      */
     fun showInterstitial(activity: Activity, onDismiss: () -> Unit) {
+        if (isEmulator()) {
+            // Bypass full-screen AdActivity on virtual emulator to prevent SurfaceSyncGroup timeout errors
+            onDismiss()
+            return
+        }
         val ad = interstitialAd
         if (ad != null) {
             ad.fullScreenContentCallback = object : FullScreenContentCallback() {
@@ -126,6 +152,10 @@ object AdMobManager {
     }
 
     fun showAppOpenAdIfAvailable(activity: Activity, onDismiss: (() -> Unit)? = null) {
+        if (isEmulator()) {
+            onDismiss?.invoke()
+            return
+        }
         val ad = appOpenAd
         if (ad != null) {
             ad.fullScreenContentCallback = object : FullScreenContentCallback() {

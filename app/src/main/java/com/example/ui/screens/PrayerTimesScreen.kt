@@ -48,16 +48,22 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.PrayerTiming
 import com.example.data.repository.PrayerCalculator
 import com.example.ui.theme.ArabicAccentGold
+import com.example.ui.theme.TimesRomanFontFamily
+import com.example.ui.util.AppStrings
 import com.example.ui.viewmodel.QuranViewModel
+import com.example.ui.viewmodel.TranslationDisplayMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrayerTimesScreen(
-    viewModel: QuranViewModel
+    viewModel: QuranViewModel,
+    translationLanguage: TranslationDisplayMode = TranslationDisplayMode.BOTH
 ) {
     val prayerTimes by viewModel.prayerTimes.collectAsState()
     val selectedCity by viewModel.selectedCity.collectAsState()
     var showCityMenu by remember { mutableStateOf(false) }
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
 
     val qiblaBearing = remember(selectedCity) {
         PrayerCalculator.calculateQiblaBearing(selectedCity.latitude, selectedCity.longitude)
@@ -107,7 +113,8 @@ fun PrayerTimesScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = selectedCity.banglaName,
+                                    text = if (isEng) selectedCity.name else selectedCity.banglaName,
+                                    fontFamily = font,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
                                     color = MaterialTheme.colorScheme.primary
@@ -120,7 +127,12 @@ fun PrayerTimesScreen(
                             ) {
                                 PrayerCalculator.supportedCities.forEach { city ->
                                     DropdownMenuItem(
-                                        text = { Text(city.banglaName) },
+                                        text = {
+                                            Text(
+                                                text = if (isEng) city.name else city.banglaName,
+                                                fontFamily = font
+                                            )
+                                        },
                                         onClick = {
                                             viewModel.selectCity(city)
                                             showCityMenu = false
@@ -147,7 +159,8 @@ fun PrayerTimesScreen(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "কিবলা: ${qiblaBearing.toInt()}°",
+                                    text = AppStrings.qiblaDirection(translationLanguage, qiblaBearing.toInt()),
+                                    fontFamily = font,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
@@ -159,15 +172,32 @@ fun PrayerTimesScreen(
                     Spacer(modifier = Modifier.height(14.dp))
 
                     // Next Prayer Countdown
+                    val nextName = if (isEng) {
+                        when (prayerTimes.nextPrayerName) {
+                            prayerTimes.fajr.nameBangla -> prayerTimes.fajr.nameEnglish
+                            prayerTimes.sunrise.nameBangla -> prayerTimes.sunrise.nameEnglish
+                            prayerTimes.dhuhr.nameBangla -> prayerTimes.dhuhr.nameEnglish
+                            prayerTimes.asr.nameBangla -> prayerTimes.asr.nameEnglish
+                            prayerTimes.maghrib.nameBangla -> prayerTimes.maghrib.nameEnglish
+                            prayerTimes.isha.nameBangla -> prayerTimes.isha.nameEnglish
+                            prayerTimes.tahajjud.nameBangla -> prayerTimes.tahajjud.nameEnglish
+                            else -> prayerTimes.nextPrayerName
+                        }
+                    } else {
+                        prayerTimes.nextPrayerName
+                    }
+
                     Text(
-                        text = "পরবর্তী নামাজ: ${prayerTimes.nextPrayerName}",
+                        text = "${AppStrings.nextPrayerLabel(translationLanguage)}$nextName",
+                        fontFamily = font,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Text(
-                        text = "বাকি আছে: ${prayerTimes.nextPrayerTimeLeft}",
-                        fontSize = 26.sp,
+                        text = "${AppStrings.timeLeftLabel(translationLanguage)}${prayerTimes.nextPrayerTimeLeft}",
+                        fontFamily = font,
+                        fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -175,6 +205,7 @@ fun PrayerTimesScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "${prayerTimes.hijriDate} • ${prayerTimes.gregorianDate}",
+                        fontFamily = font,
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -185,7 +216,8 @@ fun PrayerTimesScreen(
         // Section title
         item {
             Text(
-                text = "আজকের নামাজের সময়সূচি (Salah Timings)",
+                text = AppStrings.todaySalahSchedule(translationLanguage),
+                fontFamily = font,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.primary,
@@ -206,9 +238,14 @@ fun PrayerTimesScreen(
 
         items(timings.size) { index ->
             val timing = timings[index]
-            val isNext = timing.nameEnglish.equals(prayerTimes.nextPrayerName, ignoreCase = true)
+            val isNext = timing.nameEnglish.equals(prayerTimes.nextPrayerName, ignoreCase = true) ||
+                    timing.nameBangla.equals(prayerTimes.nextPrayerName, ignoreCase = true)
 
-            PrayerTimingCard(timing = timing, isNext = isNext)
+            PrayerTimingCard(
+                timing = timing,
+                isNext = isNext,
+                translationLanguage = translationLanguage
+            )
         }
 
         item {
@@ -218,7 +255,14 @@ fun PrayerTimesScreen(
 }
 
 @Composable
-fun PrayerTimingCard(timing: PrayerTiming, isNext: Boolean) {
+fun PrayerTimingCard(
+    timing: PrayerTiming,
+    isNext: Boolean,
+    translationLanguage: TranslationDisplayMode = TranslationDisplayMode.BOTH
+) {
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -262,14 +306,16 @@ fun PrayerTimingCard(timing: PrayerTiming, isNext: Boolean) {
 
                 Column {
                     Text(
-                        text = "${timing.nameBangla} (${timing.nameEnglish})",
+                        text = if (isEng) timing.nameEnglish else "${timing.nameBangla} (${timing.nameEnglish})",
+                        fontFamily = font,
                         fontWeight = if (isNext) FontWeight.Bold else FontWeight.SemiBold,
                         fontSize = 15.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     if (isNext) {
                         Text(
-                            text = "পরবর্তী নামাজ",
+                            text = AppStrings.nextPrayerBadge(translationLanguage),
+                            fontFamily = font,
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
@@ -280,6 +326,7 @@ fun PrayerTimingCard(timing: PrayerTiming, isNext: Boolean) {
 
             Text(
                 text = timing.timeFormatted,
+                fontFamily = font,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 color = if (isNext) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface

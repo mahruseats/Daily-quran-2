@@ -73,6 +73,37 @@ class ExampleUnitTest {
     }
 
     @Test
+    fun testQuranWordDictionarySafetyAndLanguages() {
+        // Test that meanings are in selected language and NEVER contain Arabic
+        val banglaMeaning = com.example.data.source.QuranWordDictionary.resolveMeaning(
+            arabicWord = "اللَّهِ",
+            providedBangla = "",
+            providedEnglish = "",
+            mode = com.example.ui.viewmodel.TranslationDisplayMode.BANGLA_ONLY
+        )
+        assertEquals("আল্লাহ", banglaMeaning)
+        assertFalse("Bangla meaning must not contain Arabic characters", com.example.data.source.QuranWordDictionary.containsArabicLetters(banglaMeaning))
+
+        val englishMeaning = com.example.data.source.QuranWordDictionary.resolveMeaning(
+            arabicWord = "اللَّهِ",
+            providedBangla = "",
+            providedEnglish = "",
+            mode = com.example.ui.viewmodel.TranslationDisplayMode.ENGLISH_ONLY
+        )
+        assertEquals("Allah", englishMeaning)
+        assertFalse("English meaning must not contain Arabic characters", com.example.data.source.QuranWordDictionary.containsArabicLetters(englishMeaning))
+
+        // When invalid Arabic text was passed as meaning, it must be rejected!
+        val rejectedMeaning = com.example.data.source.QuranWordDictionary.resolveMeaning(
+            arabicWord = "كتاب",
+            providedBangla = "كتاب", // Arabic passed mistakenly as Bangla
+            providedEnglish = "كتاب",
+            mode = com.example.ui.viewmodel.TranslationDisplayMode.BANGLA_ONLY
+        )
+        assertFalse("Must never return Arabic text as meaning", com.example.data.source.QuranWordDictionary.containsArabicLetters(rejectedMeaning))
+    }
+
+    @Test
     fun testPrayerCalculation() {
         val dhaka = PrayerCalculator.supportedCities[0]
         val times = PrayerCalculator.calculatePrayerTimes(dhaka)

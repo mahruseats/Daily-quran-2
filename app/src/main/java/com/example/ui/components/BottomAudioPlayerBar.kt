@@ -42,16 +42,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.audio.AudioPlayerState
+import com.example.ui.theme.TimesRomanFontFamily
+import com.example.ui.util.AppStrings
+import com.example.ui.viewmodel.TranslationDisplayMode
 
 @Composable
 fun BottomAudioPlayerBar(
     state: AudioPlayerState,
+    translationLanguage: TranslationDisplayMode = TranslationDisplayMode.BOTH,
     onTogglePlayPause: () -> Unit,
     onSeekTo: (Int) -> Unit,
     onChangeSpeed: (Float) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
     AnimatedVisibility(
         visible = state.currentSurahNumber > 0 || state.isPlaying || state.isLoading,
         enter = slideInVertically(initialOffsetY = { it }),
@@ -131,8 +137,14 @@ fun BottomAudioPlayerBar(
                                 }
                             }
 
+                            val audioSub = if (state.currentAyahNumber > 0) {
+                                AppStrings.audioAyahReciter(translationLanguage, state.currentAyahNumber, if (isEng) "Mishary Rashid" else "মিশারী রাশিদ")
+                            } else {
+                                AppStrings.audioRecitationDefault(translationLanguage)
+                            }
                             Text(
-                                text = if (state.currentAyahNumber > 0) "আয়াত ${state.currentAyahNumber} • মিশারী রাশিদ" else "অডিও তিলাওয়াত",
+                                text = audioSub,
+                                fontFamily = font,
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -165,12 +177,13 @@ fun BottomAudioPlayerBar(
 
                     IconButton(
                         onClick = onClose,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(38.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Close player",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }

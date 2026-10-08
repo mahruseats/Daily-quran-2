@@ -4,11 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +21,7 @@ import com.example.ads.AdMobManager
 import com.example.ui.screens.QuranHomeScreen
 import com.example.ui.screens.RabbanaDuasScreen
 import com.example.ui.screens.SettingsScreen
+import com.example.ui.screens.SplashScreen
 import com.example.ui.screens.SurahReaderScreen
 import com.example.ui.theme.DailyQuranTheme
 import com.example.ui.viewmodel.HomeTab
@@ -31,31 +33,42 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Initialize AdMob and load App Open, Interstitial, and Banner
-        AdMobManager.initialize(this)
+        // Safely initialize AdMob in background without blocking main UI
+        try {
+            AdMobManager.initialize(applicationContext)
+        } catch (_: Exception) {}
 
         setContent {
             val quranViewModel: QuranViewModel = viewModel()
             val isNightMode by quranViewModel.isNightMode.collectAsState()
+            var isSplashVisible by remember { mutableStateOf(true) }
 
-            DailyQuranTheme(darkTheme = isNightMode) {
+            DailyQuranTheme(darkTheme = if (isSplashVisible) true else isNightMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    QuranAppMain(
-                        activity = this,
-                        viewModel = quranViewModel
-                    )
+                    Crossfade(
+                        targetState = isSplashVisible,
+                        animationSpec = tween(500),
+                        label = "splash_crossfade"
+                    ) { showSplash ->
+                        if (showSplash) {
+                            SplashScreen(
+                                onSplashFinished = {
+                                    isSplashVisible = false
+                                }
+                            )
+                        } else {
+                            QuranAppMain(
+                                activity = this@MainActivity,
+                                viewModel = quranViewModel
+                            )
+                        }
+                    }
                 }
             }
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // Attempt to show App Open Ad on launch if available
-        AdMobManager.showAppOpenAdIfAvailable(this)
     }
 }
 
@@ -68,10 +81,6 @@ fun QuranAppMain(
     val currentTab by viewModel.currentTab.collectAsState()
     val isShowingSettings by viewModel.isShowingSettings.collectAsState()
     var isShowingRabbanaDuasSubscreen by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        AdMobManager.showAppOpenAdIfAvailable(activity)
-    }
 
     when {
         isShowingSettings -> {

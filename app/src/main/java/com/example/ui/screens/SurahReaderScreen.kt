@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +50,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,10 +60,14 @@ import com.example.ads.AdBannerView
 import com.example.ads.AdMobManager
 import com.example.data.model.Surah
 import com.example.ui.components.BottomAudioPlayerBar
+import com.example.ui.components.SurahReadingThemeCardsRow
+import com.example.ui.components.SurahReadingThemeMiniBar
 import com.example.ui.components.TafsirBottomSheet
 import com.example.ui.components.WordByWordCard
 import com.example.ui.theme.ArabicAccentGold
 import com.example.ui.viewmodel.QuranViewModel
+import com.example.ui.viewmodel.ReadingTheme
+import com.example.ui.viewmodel.TranslationDisplayMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,9 +85,22 @@ fun SurahReaderScreen(
     val isNightMode by viewModel.isNightMode.collectAsState()
     val translationLanguage by viewModel.translationLanguage.collectAsState()
     val downloadProgress by viewModel.downloadProgress.collectAsState()
+    val readingTheme by viewModel.readingTheme.collectAsState()
     val isDownloaded = viewModel.audioPlayer.isSurahDownloaded(surah.number)
 
     val listState = rememberLazyListState()
+
+    // Auto-scroll to currently reciting Ayah
+    val headerItemsCount = if (surah.number != 1 && surah.number != 9) 2 else 1
+    LaunchedEffect(audioState.currentAyahNumber, audioState.currentSurahNumber) {
+        if (audioState.currentSurahNumber == surah.number && audioState.currentAyahNumber > 0) {
+            val ayahIndex = ayahs.indexOfFirst { it.number == audioState.currentAyahNumber }
+            if (ayahIndex >= 0) {
+                val targetIndex = ayahIndex + headerItemsCount
+                listState.animateScrollToItem(targetIndex)
+            }
+        }
+    }
 
     // Handle exit with Interstitial Ad requirement:
     // "admob ads(interstitial:ca-app-pub-3940256099942544/1033173712)will pop everytime the user exits a surah or rabbana duas"
@@ -101,32 +121,61 @@ fun SurahReaderScreen(
     }
 
     Scaffold(
+        containerColor = readingTheme.backgroundColor,
         topBar = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
+                    .background(readingTheme.surfaceColor)
             ) {
                 TopAppBar(
                     title = {
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                        val isBanglaMode = translationLanguage == TranslationDisplayMode.BANGLA_ONLY
+                        val isEnglishMode = translationLanguage == TranslationDisplayMode.ENGLISH_ONLY
+
+                        val mainTitle = when {
+                            isBanglaMode -> "সূরা ${surah.nameBangla}"
+                            isEnglishMode -> surah.nameEnglish
+                            else -> "${surah.nameEnglish} (${surah.nameBangla})"
+                        }
+
+                        val subTitle = when {
+                            isBanglaMode -> "${surah.nameArabic} • ${surah.banglaMeaning} • ${surah.totalAyahs} আয়াত"
+                            isEnglishMode -> "${surah.nameArabic} • ${surah.englishMeaning} • ${surah.totalAyahs} Verses"
+                            else -> "${surah.nameArabic} • ${surah.totalAyahs} আয়াত • পারা ${surah.startJuz}"
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f, fill = false)) {
                                 Text(
-                                    text = surah.nameEnglish,
+                                    text = mainTitle,
+                                    fontFamily = if (isEnglishMode) com.example.ui.theme.TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
+                                    fontSize = 15.sp,
+                                    color = readingTheme.primaryTextColor,
+                                    maxLines = 1
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "(${surah.nameBangla})",
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = subTitle,
+                                    fontFamily = if (isEnglishMode) com.example.ui.theme.TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default,
+                                    fontSize = 11.sp,
+                                    color = readingTheme.secondaryTextColor,
+                                    maxLines = 1
                                 )
                             }
-                            Text(
-                                text = "${surah.nameArabic} • ${surah.totalAyahs} আয়াত • পারা ${surah.startJuz}",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.primary
+
+                            Spacer(modifier = Modifier.width(6.dp))
+
+                            // Three background colours beside the surah name horizontally:
+                            // 1st: Paper (black text), 2nd: Dark (white text), 3rd: White/Modern (black text)
+                            SurahReadingThemeMiniBar(
+                                selectedTheme = readingTheme,
+                                onSelectTheme = { viewModel.selectReadingTheme(it) },
+                                isBangla = isBanglaMode
                             )
                         }
                     },
@@ -134,49 +183,20 @@ fun SurahReaderScreen(
                         IconButton(onClick = { handleExit() }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
+                                contentDescription = "Back",
+                                tint = readingTheme.primaryTextColor
                             )
                         }
                     },
                     actions = {
-                        // Day / Night Switch Toggle
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(end = 4.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isNightMode) Icons.Default.DarkMode else Icons.Default.LightMode,
-                                contentDescription = if (isNightMode) "Night Mode Active" else "Day Mode Active",
-                                tint = if (isNightMode) ArabicAccentGold else MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(17.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Switch(
-                                checked = isNightMode,
-                                onCheckedChange = { viewModel.setNightMode(it) },
-                                thumbContent = {
-                                    Icon(
-                                        imageVector = if (isNightMode) Icons.Default.DarkMode else Icons.Default.LightMode,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = ArabicAccentGold,
-                                    checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
-                                    uncheckedThumbColor = MaterialTheme.colorScheme.primary,
-                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
-                            )
-                        }
-
                         // Offline download button
                         if (downloadProgress != null) {
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(end = 4.dp)) {
                                 CircularProgressIndicator(
                                     progress = { (downloadProgress ?: 0) / 100f },
                                     modifier = Modifier.size(22.dp),
-                                    strokeWidth = 2.dp
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         } else if (isDownloaded) {
@@ -192,7 +212,7 @@ fun SurahReaderScreen(
                                 Icon(
                                     imageVector = Icons.Default.Download,
                                     contentDescription = "Download surah audio offline",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = readingTheme.secondaryTextColor
                                 )
                             }
                         }
@@ -201,19 +221,24 @@ fun SurahReaderScreen(
                         IconButton(onClick = { viewModel.openSettings() }) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
-                                contentDescription = "Reader Settings"
+                                contentDescription = "Reader Settings",
+                                tint = readingTheme.primaryTextColor
                             )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = readingTheme.surfaceColor,
+                        titleContentColor = readingTheme.primaryTextColor,
+                        navigationIconContentColor = readingTheme.primaryTextColor,
+                        actionIconContentColor = readingTheme.primaryTextColor
                     )
                 )
 
                 // UPPER SIDE LANGUAGE TOGGLE (Bangla / English / Both)
                 UpperSideLanguageToggle(
                     currentMode = translationLanguage,
-                    onSelectMode = { viewModel.setTranslationLanguage(it) }
+                    onSelectMode = { viewModel.setTranslationLanguage(it) },
+                    theme = readingTheme
                 )
             }
         },
@@ -222,10 +247,11 @@ fun SurahReaderScreen(
                 // Bottom Audio Player when playing
                 BottomAudioPlayerBar(
                     state = audioState,
+                    translationLanguage = translationLanguage,
                     onTogglePlayPause = { viewModel.audioPlayer.togglePlayPause() },
                     onSeekTo = { viewModel.audioPlayer.seekTo(it) },
                     onChangeSpeed = { viewModel.audioPlayer.setPlaybackSpeed(it) },
-                    onClose = { viewModel.audioPlayer.release() }
+                    onClose = { viewModel.audioPlayer.stopAndClose() }
                 )
 
                 // AdMob Banner Ad at the bottom when reading surah
@@ -237,10 +263,13 @@ fun SurahReaderScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .background(readingTheme.backgroundColor)
         ) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(readingTheme.backgroundColor)
             ) {
                 // Surah Header card
                 item {
@@ -249,10 +278,21 @@ fun SurahReaderScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 14.dp, vertical = 8.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                            containerColor = readingTheme.cardBackgroundColor
                         ),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        border = androidx.compose.foundation.BorderStroke(
+                            0.8.dp,
+                            when (readingTheme) {
+                                ReadingTheme.PAPER -> Color(0xFFE8DFC8)
+                                ReadingTheme.DARK -> Color(0xFF2C2C2C)
+                                ReadingTheme.WHITE -> Color(0xFFE5E7EB)
+                            }
+                        )
                     ) {
+                        val isBanglaMode = translationLanguage == TranslationDisplayMode.BANGLA_ONLY
+                        val isEnglishMode = translationLanguage == TranslationDisplayMode.ENGLISH_ONLY
+
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -261,27 +301,40 @@ fun SurahReaderScreen(
                         ) {
                             Text(
                                 text = surah.nameArabic,
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
+                                fontFamily = com.example.ui.theme.QuranArabicFontFamily,
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = readingTheme.primaryTextColor
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "${surah.nameEnglish} • ${surah.englishMeaning}",
+                                text = when {
+                                    isBanglaMode -> "সূরা ${surah.nameBangla}"
+                                    isEnglishMode -> surah.nameEnglish
+                                    else -> "${surah.nameEnglish} • ${surah.nameBangla}"
+                                },
+                                fontFamily = if (isBanglaMode) androidx.compose.ui.text.font.FontFamily.Default else com.example.ui.theme.TimesRomanFontFamily,
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp
+                                fontSize = 16.sp,
+                                color = readingTheme.primaryTextColor
                             )
                             Text(
-                                text = "বাংলা অর্থ: ${surah.banglaMeaning}",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = when {
+                                    isBanglaMode -> "অর্থ: ${surah.banglaMeaning} • ${if (surah.revelationType.name == "MECCAN") "মাক্কী সূরা" else "মাদানী সূরা"} • ${surah.totalAyahs} আয়াত • পারা ${surah.startJuz}"
+                                    isEnglishMode -> "Meaning: ${surah.englishMeaning} • ${if (surah.revelationType.name == "MECCAN") "Meccan Surah" else "Medinan Surah"} • ${surah.totalAyahs} Verses • Juz ${surah.startJuz}"
+                                    else -> "অর্থ: ${surah.banglaMeaning} • Meaning: ${surah.englishMeaning} • ${surah.totalAyahs} আয়াত"
+                                },
+                                fontFamily = if (isBanglaMode) androidx.compose.ui.text.font.FontFamily.Default else com.example.ui.theme.TimesRomanFontFamily,
+                                fontSize = 12.sp,
+                                color = readingTheme.secondaryTextColor,
+                                textAlign = TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(10.dp))
 
                             // Play full surah audio chip
                             Surface(
                                 shape = RoundedCornerShape(20.dp),
-                                color = MaterialTheme.colorScheme.primary,
+                                color = if (readingTheme == ReadingTheme.DARK) Color(0xFF1E1E1E) else if (readingTheme == ReadingTheme.PAPER) Color(0xFF000000) else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier
                                     .clickable {
                                         if (ayahs.isNotEmpty()) {
@@ -298,18 +351,43 @@ fun SurahReaderScreen(
                                     Icon(
                                         imageVector = Icons.Default.PlayArrow,
                                         contentDescription = "Play Surah",
-                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        tint = if (readingTheme == ReadingTheme.PAPER) Color(0xFFF0D0A4) else Color(0xFFFFFFFF),
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "সম্পূর্ণ সূরা তিলাওয়াত শুনুন",
+                                        text = when {
+                                            isBanglaMode -> "সম্পূর্ণ সূরা তিলাওয়াত শুনুন"
+                                            isEnglishMode -> "Listen to Full Surah Recitation"
+                                            else -> "সূরা তিলাওয়াত শুনুন (Listen Full Surah)"
+                                        },
                                         fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimary
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (readingTheme == ReadingTheme.PAPER) Color(0xFFF0D0A4) else Color(0xFFFFFFFF)
                                     )
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Themes selection row matching user's image: Paper, Dark, Modern
+                            Text(
+                                text = when {
+                                    isBanglaMode -> "পঠন ব্যাকগ্রাউন্ড ও থিম"
+                                    isEnglishMode -> "Reading Background & Themes"
+                                    else -> "পঠন ব্যাকগ্রাউন্ড ও থিম (Themes)"
+                                },
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = readingTheme.secondaryTextColor,
+                                modifier = Modifier.align(Alignment.Start)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            SurahReadingThemeCardsRow(
+                                selectedTheme = readingTheme,
+                                onSelectTheme = { viewModel.selectReadingTheme(it) },
+                                isBangla = isBanglaMode
+                            )
                         }
                     }
                 }
@@ -325,9 +403,10 @@ fun SurahReaderScreen(
                         ) {
                             Text(
                                 text = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary,
+                                fontFamily = com.example.ui.theme.QuranArabicFontFamily,
+                                fontSize = 26.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = readingTheme.primaryTextColor,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -364,6 +443,7 @@ fun SurahReaderScreen(
         TafsirBottomSheet(
             ayah = ayah,
             surah = surah,
+            translationMode = translationLanguage,
             onDismiss = { viewModel.closeTafsir() }
         )
     }

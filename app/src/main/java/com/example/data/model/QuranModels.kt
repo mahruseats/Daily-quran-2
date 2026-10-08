@@ -23,6 +23,36 @@ data class Word(
     val bangla: String
 )
 
+enum class QuranScriptType(
+    val id: String,
+    val titleEnglish: String,
+    val titleBangla: String,
+    val shortName: String,
+    val description: String
+) {
+    INDO_PAK(
+        id = "indopak",
+        titleEnglish = "Indo-Pak",
+        titleBangla = "ইন্দো-পাক",
+        shortName = "Indo-Pak",
+        description = "বাংলাদেশ, ভারত ও পাকিস্তান প্রমিত স্ক্রিপ্ট"
+    ),
+    INDONESIAN_STANDARD(
+        id = "indonesian",
+        titleEnglish = "Indonesian Standard",
+        titleBangla = "ইন্দোনেশিয়ান স্ট্যান্ডার্ড",
+        shortName = "Indonesian",
+        description = "মুসহাফ স্ট্যান্ডার্ড ইন্দোনেশিয়া (Kemenag RI)"
+    ),
+    UTHMANI(
+        id = "osmani",
+        titleEnglish = "Osmani (Uthmani)",
+        titleBangla = "উসমানী স্ক্রিপ্ট",
+        shortName = "Osmani",
+        description = "মদিনা মুসহাফ স্ট্যান্ডার্ড (Hafs 'an 'Asim)"
+    )
+}
+
 data class Ayah(
     val number: Int, // Ayah number within Surah
     val globalNumber: Int = 0,
@@ -35,8 +65,18 @@ data class Ayah(
     val tafsirBangla: String = "",
     val audioUrl: String = "",
     val juz: Int = 1,
-    val sajdah: Boolean = false
-)
+    val sajdah: Boolean = false,
+    val textIndoPak: String = "",
+    val textIndonesian: String = ""
+) {
+    fun getTextForScript(script: QuranScriptType): String {
+        return when (script) {
+            QuranScriptType.INDO_PAK -> if (textIndoPak.isNotEmpty()) textIndoPak else com.example.data.source.QuranScriptConverter.convertToIndoPak(textArabic)
+            QuranScriptType.INDONESIAN_STANDARD -> if (textIndonesian.isNotEmpty()) textIndonesian else com.example.data.source.QuranScriptConverter.convertToIndonesian(textArabic)
+            QuranScriptType.UTHMANI -> textArabic
+        }
+    }
+}
 
 data class JuzInfo(
     val number: Int,

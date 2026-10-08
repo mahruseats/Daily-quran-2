@@ -40,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,9 +48,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.Ayah
@@ -60,6 +64,7 @@ import com.example.ui.theme.SajdahBadge
 import com.example.ui.viewmodel.QuranBgColor
 import com.example.ui.viewmodel.QuranTextColor
 import com.example.ui.viewmodel.ReaderSettings
+import com.example.ui.viewmodel.ReadingTheme
 import com.example.ui.viewmodel.TranslationDisplayMode
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -79,18 +84,28 @@ fun WordByWordCard(
     val context = LocalContext.current
     var isWordsExpanded by remember { mutableStateOf(settings.showWordByWord) }
 
+    val theme = settings.selectedReadingTheme
+
     val cardBg = if (settings.selectedBgColor != QuranBgColor.DEFAULT) {
         if (isCurrentPlaying) settings.selectedBgColor.color.copy(alpha = 0.85f) else settings.selectedBgColor.color
     } else if (isCurrentPlaying) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+        if (theme == ReadingTheme.DARK) Color(0xFF2E2E2E) else Color(0xFFE8DFC8)
     } else {
-        MaterialTheme.colorScheme.surface
+        theme.cardBackgroundColor
     }
 
     val customTextColor = if (settings.selectedTextColor != QuranTextColor.DEFAULT) {
         settings.selectedTextColor.color
     } else {
-        MaterialTheme.colorScheme.onSurface
+        theme.primaryTextColor
+    }
+
+    val secondaryTextColor = theme.secondaryTextColor
+
+    val cardBorder = when (theme) {
+        ReadingTheme.PAPER -> androidx.compose.foundation.BorderStroke(0.8.dp, Color(0xFFE8DFC8))
+        ReadingTheme.DARK -> androidx.compose.foundation.BorderStroke(0.8.dp, Color(0xFF2C2C2C))
+        ReadingTheme.WHITE -> androidx.compose.foundation.BorderStroke(0.8.dp, Color(0xFFE5E7EB))
     }
 
     Card(
@@ -99,6 +114,7 @@ fun WordByWordCard(
             .padding(horizontal = 10.dp, vertical = 3.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = cardBg),
+        border = cardBorder,
         elevation = CardDefaults.cardElevation(defaultElevation = if (isCurrentPlaying) 3.dp else 1.dp)
     ) {
         Column(
@@ -113,40 +129,58 @@ fun WordByWordCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Small Ayah number badge
-                    Box(
-                        modifier = Modifier
-                            .size(26.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
-                            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), CircleShape),
-                        contentAlignment = Alignment.Center
+                    // Complete Ayah reference in a box on the upper left
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = when (theme) {
+                            ReadingTheme.DARK -> Color(0xFF222222)
+                            ReadingTheme.PAPER -> Color(0xFFEADBBE)
+                            ReadingTheme.WHITE -> Color(0xFFF1F5F9)
+                        },
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.2.dp,
+                            theme.primaryTextColor.copy(alpha = 0.8f)
+                        ),
+                        modifier = Modifier.padding(end = 4.dp)
                     ) {
-                        Text(
-                            text = "${ayah.number}",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${surah.number}:${ayah.number}",
+                                fontFamily = if (translationLanguage == TranslationDisplayMode.BANGLA_ONLY) androidx.compose.ui.text.font.FontFamily.Default else com.example.ui.theme.TimesRomanFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = theme.primaryTextColor
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            val ayahSurahName = when (translationLanguage) {
+                                TranslationDisplayMode.BANGLA_ONLY -> "সূরা ${surah.nameBangla}"
+                                TranslationDisplayMode.ENGLISH_ONLY -> surah.nameEnglish
+                                TranslationDisplayMode.BOTH -> surah.nameEnglish
+                            }
+                            Text(
+                                text = "• $ayahSurahName",
+                                fontFamily = if (translationLanguage == TranslationDisplayMode.BANGLA_ONLY) androidx.compose.ui.text.font.FontFamily.Default else com.example.ui.theme.TimesRomanFontFamily,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = theme.primaryTextColor
+                            )
+                        }
                     }
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    Text(
-                        text = "${surah.nameEnglish}:${ayah.number}",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
 
                     if (ayah.sajdah) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = SajdahBadge.copy(alpha = 0.15f)
+                            color = theme.cardBackgroundColor,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, theme.primaryTextColor)
                         ) {
                             Text(
-                                text = "সাজদাহ",
-                                color = SajdahBadge,
+                                text = if (translationLanguage == TranslationDisplayMode.ENGLISH_ONLY) "Sajdah" else "সাজদাহ",
+                                fontFamily = if (translationLanguage == TranslationDisplayMode.ENGLISH_ONLY) com.example.ui.theme.TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default,
+                                color = theme.primaryTextColor,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
@@ -159,7 +193,8 @@ fun WordByWordCard(
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = if (isWordsExpanded) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                            color = theme.cardBackgroundColor,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, theme.primaryTextColor),
                             modifier = Modifier.clickable { isWordsExpanded = !isWordsExpanded }
                         ) {
                             Row(
@@ -167,15 +202,16 @@ fun WordByWordCard(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "শব্দার্থ",
+                                    text = if (translationLanguage == TranslationDisplayMode.ENGLISH_ONLY) "Words" else "শব্দার্থ",
+                                    fontFamily = if (translationLanguage == TranslationDisplayMode.ENGLISH_ONLY) com.example.ui.theme.TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isWordsExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = theme.primaryTextColor
                                 )
                                 Icon(
                                     imageVector = if (isWordsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                                     contentDescription = null,
-                                    tint = if (isWordsExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = theme.iconColor,
                                     modifier = Modifier.size(14.dp)
                                 )
                             }
@@ -191,8 +227,8 @@ fun WordByWordCard(
                     ) {
                         Icon(
                             imageVector = if (isCurrentPlaying) Icons.Filled.PauseCircle else Icons.Filled.PlayCircle,
-                            contentDescription = "Play",
-                            tint = if (isCurrentPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            contentDescription = if (translationLanguage == TranslationDisplayMode.ENGLISH_ONLY) "Play Ayah" else "আয়াত শুনুন",
+                            tint = theme.iconColor,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -203,8 +239,8 @@ fun WordByWordCard(
                     ) {
                         Icon(
                             imageVector = if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                            contentDescription = "Bookmark",
-                            tint = if (isBookmarked) ArabicAccentGold else MaterialTheme.colorScheme.onSurfaceVariant,
+                            contentDescription = if (translationLanguage == TranslationDisplayMode.ENGLISH_ONLY) "Bookmark" else "বুকমার্ক",
+                            tint = theme.iconColor,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -215,8 +251,8 @@ fun WordByWordCard(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.MenuBook,
-                            contentDescription = "Tafsir",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            contentDescription = if (translationLanguage == TranslationDisplayMode.ENGLISH_ONLY) "Tafsir" else "তাফসীর",
+                            tint = theme.iconColor,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -224,48 +260,80 @@ fun WordByWordCard(
                     IconButton(
                         onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText(
-                                "Ayah",
-                                "${ayah.textArabic}\n${ayah.translationBangla}\n${ayah.translationEnglish}"
-                            )
+                            val clipText = when (translationLanguage) {
+                                TranslationDisplayMode.BANGLA_ONLY -> "${ayah.textArabic}\n${ayah.translationBangla}"
+                                TranslationDisplayMode.ENGLISH_ONLY -> "${ayah.textArabic}\n${ayah.translationEnglish}"
+                                TranslationDisplayMode.BOTH -> "${ayah.textArabic}\n${ayah.translationBangla}\n${ayah.translationEnglish}"
+                            }
+                            val clip = ClipData.newPlainText("Ayah", clipText)
                             clipboard.setPrimaryClip(clip)
-                            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                            val toastMsg = if (translationLanguage == TranslationDisplayMode.ENGLISH_ONLY) "Copied" else "কপি করা হয়েছে"
+                            Toast.makeText(context, toastMsg, Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.ContentCopy,
-                            contentDescription = "Copy",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            contentDescription = if (translationLanguage == TranslationDisplayMode.ENGLISH_ONLY) "Copy" else "কপি",
+                            tint = theme.iconColor,
                             modifier = Modifier.size(16.dp)
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(7.dp))
 
-            // Arabic Text (Crisp, clean, compact line height)
-            Text(
-                text = ayah.textArabic,
-                fontSize = (settings.arabicFontSizeSp * 0.9f).sp,
-                lineHeight = (settings.arabicFontSizeSp * 1.45f).sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Right,
-                color = customTextColor,
+            // Complete Arabic Ayah enclosed in a dedicated elegant Box with bold script
+            val currentScriptText = ayah.getTextForScript(settings.selectedScriptType)
+            val scriptFontFamily = com.example.ui.theme.getFontFamilyForScript(settings.selectedScriptType)
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = when (theme) {
+                    ReadingTheme.DARK -> Color(0xFF1E1E1E)
+                    ReadingTheme.PAPER -> Color(0xFFF3DEC2).copy(alpha = 0.55f)
+                    ReadingTheme.WHITE -> Color(0xFFF8FAFC)
+                },
+                border = androidx.compose.foundation.BorderStroke(
+                    width = 1.dp,
+                    color = when (theme) {
+                        ReadingTheme.DARK -> Color(0xFF383838)
+                        ReadingTheme.PAPER -> Color(0xFFD3B080)
+                        ReadingTheme.WHITE -> Color(0xFFE2E8F0)
+                    }
+                ),
                 modifier = Modifier.fillMaxWidth()
-            )
+            ) {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    Text(
+                        text = currentScriptText,
+                        fontFamily = scriptFontFamily,
+                        fontSize = (settings.arabicFontSizeSp * 1.05f).sp,
+                        lineHeight = (settings.arabicFontSizeSp * 1.85f).sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Start,
+                        color = customTextColor,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 9.dp)
+                    )
+                }
+            }
 
-            // Short & Compact Word-by-Word Flow (Only 2 lines per chip instead of 4)
+            // Short & Compact Word-by-Word Flow (Starts from top line and wraps downwards)
             AnimatedVisibility(visible = isWordsExpanded && ayah.words.isNotEmpty()) {
                 Column(modifier = Modifier.padding(top = 6.dp)) {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.End),
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        ayah.words.reversed().forEach { word ->
-                            CompactWordChip(word = word, mode = translationLanguage)
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ayah.words.forEach { word ->
+                                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                                    CompactWordChip(word = word, mode = translationLanguage, theme = theme)
+                                }
+                            }
                         }
                     }
                 }
@@ -273,27 +341,32 @@ fun WordByWordCard(
 
             Spacer(modifier = Modifier.height(5.dp))
             HorizontalDivider(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                color = when (theme) {
+                    ReadingTheme.DARK -> Color(0xFF222222)
+                    ReadingTheme.PAPER -> Color(0xFFD6B587)
+                    ReadingTheme.WHITE -> Color(0xFFE5E7EB)
+                },
                 thickness = 0.5.dp
             )
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Concise Sentence Translations based on selected language
+            // Concise Sentence Translations based on selected language (pure white in dark, pure black in paper/white)
             when (translationLanguage) {
                 TranslationDisplayMode.BANGLA_ONLY -> {
                     Text(
                         text = ayah.translationBangla,
                         fontSize = settings.translationFontSizeSp.sp,
                         lineHeight = (settings.translationFontSizeSp * 1.35f).sp,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = theme.primaryTextColor
                     )
                 }
                 TranslationDisplayMode.ENGLISH_ONLY -> {
                     Text(
                         text = ayah.translationEnglish,
+                        fontFamily = com.example.ui.theme.TimesRomanFontFamily,
                         fontSize = settings.translationFontSizeSp.sp,
-                        lineHeight = (settings.translationFontSizeSp * 1.35f).sp,
-                        color = MaterialTheme.colorScheme.onSurface
+                        lineHeight = (settings.translationFontSizeSp * 1.4f).sp,
+                        color = theme.primaryTextColor
                     )
                 }
                 TranslationDisplayMode.BOTH -> {
@@ -301,14 +374,15 @@ fun WordByWordCard(
                         text = "বাং: ${ayah.translationBangla}",
                         fontSize = settings.translationFontSizeSp.sp,
                         lineHeight = (settings.translationFontSizeSp * 1.35f).sp,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = theme.primaryTextColor
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "EN: ${ayah.translationEnglish}",
-                        fontSize = (settings.translationFontSizeSp - 1f).sp,
-                        lineHeight = (settings.translationFontSizeSp * 1.3f).sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontFamily = com.example.ui.theme.TimesRomanFontFamily,
+                        fontSize = settings.translationFontSizeSp.sp,
+                        lineHeight = (settings.translationFontSizeSp * 1.35f).sp,
+                        color = theme.primaryTextColor
                     )
                 }
             }
@@ -317,41 +391,44 @@ fun WordByWordCard(
 }
 
 /**
- * Compact Word Chip with only 2 lines: Arabic on top + Selected Language meaning underneath!
+ * Word Item with Arabic on top and Bangla/English meaning underneath, with NO enclosing boxes or borders.
  */
 @Composable
-fun CompactWordChip(word: Word, mode: TranslationDisplayMode) {
-    Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+fun CompactWordChip(word: Word, mode: TranslationDisplayMode, theme: ReadingTheme) {
+    val meaning = com.example.data.source.QuranWordDictionary.resolveMeaning(
+        arabicWord = word.arabic,
+        providedBangla = word.bangla,
+        providedEnglish = word.english,
+        mode = mode
+    )
+
+    Column(
+        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Arabic Word
-            Text(
-                text = word.arabic,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
-            )
+        // Arabic Word
+        Text(
+            text = word.arabic,
+            fontFamily = com.example.ui.theme.QuranArabicFontFamily,
+            fontSize = 20.sp,
+            lineHeight = 28.sp,
+            fontWeight = FontWeight.Normal,
+            color = theme.primaryTextColor,
+            textAlign = TextAlign.Center
+        )
 
-            // Meaning in selected language (short & clean)
-            val meaningText = when (mode) {
-                TranslationDisplayMode.BANGLA_ONLY -> word.bangla
-                TranslationDisplayMode.ENGLISH_ONLY -> word.english
-                TranslationDisplayMode.BOTH -> "${word.bangla} (${word.english})"
-            }
-
+        // Meaning in selected language (Bangla / English, NEVER Arabic)
+        if (meaning.isNotBlank()) {
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = meaningText,
-                fontSize = 10.sp,
+                text = meaning,
+                fontFamily = if (mode == TranslationDisplayMode.ENGLISH_ONLY || mode == TranslationDisplayMode.BOTH) com.example.ui.theme.TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default,
+                fontSize = 11.5.sp,
+                lineHeight = 15.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.Center
+                color = theme.secondaryTextColor,
+                textAlign = TextAlign.Center,
+                maxLines = 2
             )
         }
     }

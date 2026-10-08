@@ -67,12 +67,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.BookmarkEntity
 import com.example.data.model.JuzInfo
+import com.example.data.model.QuranScriptType
 import com.example.data.model.RevelationType
 import com.example.data.model.Surah
 import com.example.data.source.JuzCatalog
 import com.example.data.source.SurahCatalog
 import com.example.ui.components.BottomAudioPlayerBar
 import com.example.ui.theme.ArabicAccentGold
+import com.example.ui.theme.TimesRomanFontFamily
+import com.example.ui.util.AppStrings
 import com.example.ui.viewmodel.HomeTab
 import com.example.ui.viewmodel.QuranViewModel
 import com.example.ui.viewmodel.TranslationDisplayMode
@@ -146,10 +149,13 @@ fun QuranHomeScreen(
                                         modifier = Modifier.size(13.dp)
                                     )
                                     Spacer(modifier = Modifier.width(3.dp))
+                                    val isEng = AppStrings.isEnglish(translationLanguage)
+                                    val salahName = if (isEng) nextTiming.nameEnglish else nextTiming.nameBangla
                                     Text(
-                                        text = "${nextTiming.nameEnglish} ${nextTiming.timeFormatted}",
+                                        text = "$salahName ${nextTiming.timeFormatted}",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
+                                        fontFamily = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                                         maxLines = 1
                                     )
@@ -158,9 +164,11 @@ fun QuranHomeScreen(
                         }
                     },
                     title = {
+                        val isEng = AppStrings.isEnglish(translationLanguage)
                         Text(
-                            text = "Daily Quran",
+                            text = AppStrings.appTitle(translationLanguage),
                             fontWeight = FontWeight.Bold,
+                            fontFamily = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default,
                             fontSize = 19.sp,
                             color = MaterialTheme.colorScheme.primary,
                             maxLines = 1
@@ -196,11 +204,15 @@ fun QuranHomeScreen(
                 // Bottom Audio Player bar
                 BottomAudioPlayerBar(
                     state = audioState,
+                    translationLanguage = translationLanguage,
                     onTogglePlayPause = { viewModel.audioPlayer.togglePlayPause() },
                     onSeekTo = { viewModel.audioPlayer.seekTo(it) },
                     onChangeSpeed = { viewModel.audioPlayer.setPlaybackSpeed(it) },
-                    onClose = { viewModel.audioPlayer.release() }
+                    onClose = { viewModel.audioPlayer.stopAndClose() }
                 )
+
+                val isEng = AppStrings.isEnglish(translationLanguage)
+                val navFont = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
 
                 // Navigation Bar for Primary Tabs
                 NavigationBar(
@@ -210,8 +222,8 @@ fun QuranHomeScreen(
                     NavigationBarItem(
                         selected = currentTab == HomeTab.SURAHS,
                         onClick = { viewModel.setTab(HomeTab.SURAHS) },
-                        icon = { Icon(Icons.Default.MenuBook, contentDescription = "Surahs") },
-                        label = { Text("সূরাসমূহ") },
+                        icon = { Icon(Icons.Default.MenuBook, contentDescription = AppStrings.navSurahs(translationLanguage)) },
+                        label = { Text(AppStrings.navSurahs(translationLanguage), fontFamily = navFont) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.primary,
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
@@ -220,8 +232,8 @@ fun QuranHomeScreen(
                     NavigationBarItem(
                         selected = currentTab == HomeTab.JUZ,
                         onClick = { viewModel.setTab(HomeTab.JUZ) },
-                        icon = { Icon(Icons.Default.AutoStories, contentDescription = "Para / Juz") },
-                        label = { Text("পারা / জুয") },
+                        icon = { Icon(Icons.Default.AutoStories, contentDescription = AppStrings.navJuz(translationLanguage)) },
+                        label = { Text(AppStrings.navJuz(translationLanguage), fontFamily = navFont) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.primary,
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
@@ -230,8 +242,8 @@ fun QuranHomeScreen(
                     NavigationBarItem(
                         selected = currentTab == HomeTab.PRAYER_TIMES,
                         onClick = { viewModel.setTab(HomeTab.PRAYER_TIMES) },
-                        icon = { Icon(Icons.Default.AccessTime, contentDescription = "Prayer Times") },
-                        label = { Text("নামাজ") },
+                        icon = { Icon(Icons.Default.AccessTime, contentDescription = AppStrings.navPrayerTimes(translationLanguage)) },
+                        label = { Text(AppStrings.navPrayerTimes(translationLanguage), fontFamily = navFont) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.primary,
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
@@ -243,8 +255,8 @@ fun QuranHomeScreen(
                             viewModel.setTab(HomeTab.RABBANA_DUAS)
                             onOpenRabbanaDuas()
                         },
-                        icon = { Icon(Icons.Default.Favorite, contentDescription = "Rabbana Duas") },
-                        label = { Text("দোয়া") },
+                        icon = { Icon(Icons.Default.Favorite, contentDescription = AppStrings.navDuas(translationLanguage)) },
+                        label = { Text(AppStrings.navDuas(translationLanguage), fontFamily = navFont) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.primary,
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
@@ -253,8 +265,8 @@ fun QuranHomeScreen(
                     NavigationBarItem(
                         selected = currentTab == HomeTab.BOOKMARKS,
                         onClick = { viewModel.setTab(HomeTab.BOOKMARKS) },
-                        icon = { Icon(Icons.Default.Bookmark, contentDescription = "Bookmarks") },
-                        label = { Text("বুকমার্ক") },
+                        icon = { Icon(Icons.Default.Bookmark, contentDescription = AppStrings.navBookmarks(translationLanguage)) },
+                        label = { Text(AppStrings.navBookmarks(translationLanguage), fontFamily = navFont) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.primary,
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
@@ -283,6 +295,7 @@ fun QuranHomeScreen(
                 }
                 HomeTab.JUZ -> {
                     JuzTabContent(
+                        translationLanguage = translationLanguage,
                         onSelectJuz = { juz ->
                             val surah = SurahCatalog.getSurah(juz.startSurahNumber) ?: SurahCatalog.surahs[0]
                             viewModel.openSurah(surah, juz.startAyah)
@@ -291,17 +304,22 @@ fun QuranHomeScreen(
                     )
                 }
                 HomeTab.PRAYER_TIMES -> {
-                    PrayerTimesScreen(viewModel = viewModel)
+                    PrayerTimesScreen(
+                        viewModel = viewModel,
+                        translationLanguage = translationLanguage
+                    )
                 }
                 HomeTab.RABBANA_DUAS -> {
                     RabbanaDuasScreen(
                         viewModel = viewModel,
+                        translationLanguage = translationLanguage,
                         onBack = { viewModel.setTab(HomeTab.SURAHS) }
                     )
                 }
                 HomeTab.BOOKMARKS -> {
                     BookmarksTabContent(
                         bookmarks = bookmarks,
+                        translationLanguage = translationLanguage,
                         onSelectBookmark = { b ->
                             val surah = SurahCatalog.getSurah(b.surahNumber) ?: SurahCatalog.surahs[0]
                             viewModel.openSurah(surah, b.ayahNumber)
@@ -323,35 +341,62 @@ fun QuranHomeScreen(
 @Composable
 fun UpperSideLanguageToggle(
     currentMode: TranslationDisplayMode,
-    onSelectMode: (TranslationDisplayMode) -> Unit
+    onSelectMode: (TranslationDisplayMode) -> Unit,
+    theme: com.example.ui.viewmodel.ReadingTheme? = null
 ) {
+    val containerBg = when (theme) {
+        com.example.ui.viewmodel.ReadingTheme.DARK -> Color(0xFF000000)
+        com.example.ui.viewmodel.ReadingTheme.PAPER -> Color(0xFFE2BC8B)
+        com.example.ui.viewmodel.ReadingTheme.WHITE -> Color(0xFFF3F4F6)
+        null -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    }
+
+    val containerBorder = if (theme == com.example.ui.viewmodel.ReadingTheme.DARK) {
+        BorderStroke(1.dp, Color(0xFF333333))
+    } else if (theme == com.example.ui.viewmodel.ReadingTheme.PAPER) {
+        BorderStroke(1.dp, Color(0xFFD4AA70))
+    } else null
+
+    val tab1Title = when (currentMode) {
+        TranslationDisplayMode.ENGLISH_ONLY -> "Bangla"
+        TranslationDisplayMode.BANGLA_ONLY -> "বাংলা"
+        TranslationDisplayMode.BOTH -> "বাংলা (Bangla)"
+    }
+    val tab2Title = "English"
+    val tab3Title = when (currentMode) {
+        TranslationDisplayMode.ENGLISH_ONLY -> "Both"
+        TranslationDisplayMode.BANGLA_ONLY -> "উভয়"
+        TranslationDisplayMode.BOTH -> "উভয় (Both)"
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
-            .background(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(12.dp)
-            )
+            .background(color = containerBg, shape = RoundedCornerShape(12.dp))
+            .then(if (containerBorder != null) Modifier.border(containerBorder, RoundedCornerShape(12.dp)) else Modifier)
             .padding(3.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         LanguageTabPill(
-            title = "বাংলা (Bangla)",
+            title = tab1Title,
             isSelected = currentMode == TranslationDisplayMode.BANGLA_ONLY,
             onClick = { onSelectMode(TranslationDisplayMode.BANGLA_ONLY) },
+            theme = theme,
             modifier = Modifier.weight(1f)
         )
         LanguageTabPill(
-            title = "English",
+            title = tab2Title,
             isSelected = currentMode == TranslationDisplayMode.ENGLISH_ONLY,
             onClick = { onSelectMode(TranslationDisplayMode.ENGLISH_ONLY) },
+            theme = theme,
             modifier = Modifier.weight(1f)
         )
         LanguageTabPill(
-            title = "উভয় (Both)",
+            title = tab3Title,
             isSelected = currentMode == TranslationDisplayMode.BOTH,
             onClick = { onSelectMode(TranslationDisplayMode.BOTH) },
+            theme = theme,
             modifier = Modifier.weight(1f)
         )
     }
@@ -362,14 +407,34 @@ fun LanguageTabPill(
     title: String,
     isSelected: Boolean,
     onClick: () -> Unit,
+    theme: com.example.ui.viewmodel.ReadingTheme? = null,
     modifier: Modifier = Modifier
 ) {
+    val activeBg = when (theme) {
+        com.example.ui.viewmodel.ReadingTheme.DARK -> Color(0xFFFFFFFF)
+        com.example.ui.viewmodel.ReadingTheme.PAPER -> Color(0xFF000000)
+        com.example.ui.viewmodel.ReadingTheme.WHITE -> Color(0xFF000000)
+        null -> MaterialTheme.colorScheme.primary
+    }
+    val activeText = when (theme) {
+        com.example.ui.viewmodel.ReadingTheme.DARK -> Color(0xFF000000)
+        com.example.ui.viewmodel.ReadingTheme.PAPER -> Color(0xFFF0D0A4)
+        com.example.ui.viewmodel.ReadingTheme.WHITE -> Color(0xFFFFFFFF)
+        null -> MaterialTheme.colorScheme.onPrimary
+    }
+    val inactiveText = when (theme) {
+        com.example.ui.viewmodel.ReadingTheme.DARK -> Color(0xFFFFFFFF)
+        com.example.ui.viewmodel.ReadingTheme.PAPER -> Color(0xFF000000)
+        com.example.ui.viewmodel.ReadingTheme.WHITE -> Color(0xFF000000)
+        null -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
     val bgColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+        targetValue = if (isSelected) activeBg else Color.Transparent,
         label = "pill_bg"
     )
     val textColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        targetValue = if (isSelected) activeText else inactiveText,
         label = "pill_text"
     )
 
@@ -410,13 +475,15 @@ fun VerticalSurahsList(
     ) {
         // Search Bar
         item {
+            val isEng = AppStrings.isEnglish(translationLanguage)
+            val searchFont = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = onSearchChange,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp),
-                placeholder = { Text("সূরা খুঁজুন (যেমন: Fatihah, 36, ইয়াসিন, يس)") },
+                placeholder = { Text(AppStrings.searchSurahPlaceholder(translationLanguage), fontFamily = searchFont) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
@@ -445,6 +512,8 @@ fun VerticalSurahsList(
         // Last Read Banner
         if (lastRead != null && searchQuery.isEmpty()) {
             item {
+                val isEng = AppStrings.isEnglish(translationLanguage)
+                val cardFont = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -480,20 +549,23 @@ fun VerticalSurahsList(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "সর্বশেষ পড়া (Resume Reading)",
+                                    text = AppStrings.lastReadHeader(translationLanguage),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
+                                    fontFamily = cardFont,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    text = "${lastRead.surahNameEnglish} (${lastRead.surahNameBangla})",
+                                    text = if (isEng) lastRead.surahNameEnglish else "${lastRead.surahNameBangla} (${lastRead.surahNameEnglish})",
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
+                                    fontFamily = cardFont,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "আয়াত নং ${lastRead.ayahNumber}",
+                                    text = AppStrings.verseNumber(translationLanguage, lastRead.ayahNumber),
                                     fontSize = 12.sp,
+                                    fontFamily = cardFont,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -504,9 +576,10 @@ fun VerticalSurahsList(
                             color = MaterialTheme.colorScheme.primary
                         ) {
                             Text(
-                                text = "পড়ুন",
+                                text = AppStrings.readButton(translationLanguage),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
+                                fontFamily = cardFont,
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                             )
@@ -518,6 +591,8 @@ fun VerticalSurahsList(
 
         // Section header
         item {
+            val isEng = AppStrings.isEnglish(translationLanguage)
+            val headerFont = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -526,14 +601,16 @@ fun VerticalSurahsList(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "সমস্ত সূরা (১১৪টি সূরা ক্রমানুসারে)",
+                    text = AppStrings.allSurahsHeader(translationLanguage),
                     fontWeight = FontWeight.Bold,
+                    fontFamily = headerFont,
                     fontSize = 15.sp,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "${surahs.size} টি সূরা",
+                    text = if (isEng) "${surahs.size} Surahs" else "${surahs.size} টি সূরা",
                     fontSize = 12.sp,
+                    fontFamily = headerFont,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -624,12 +701,14 @@ fun VerticalSurahCard(
                         TranslationDisplayMode.ENGLISH_ONLY -> {
                             Text(
                                 text = surah.nameEnglish,
+                                fontFamily = com.example.ui.theme.TimesRomanFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "Meaning: ${surah.englishMeaning}",
+                                fontFamily = com.example.ui.theme.TimesRomanFontFamily,
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -637,12 +716,14 @@ fun VerticalSurahCard(
                         TranslationDisplayMode.BOTH -> {
                             Text(
                                 text = "${surah.nameEnglish} • ${surah.nameBangla}",
+                                fontFamily = com.example.ui.theme.TimesRomanFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "${surah.banglaMeaning} (${surah.englishMeaning})",
+                                fontFamily = com.example.ui.theme.TimesRomanFontFamily,
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
@@ -652,8 +733,11 @@ fun VerticalSurahCard(
                     }
 
                     Spacer(modifier = Modifier.height(2.dp))
+                    val isEng = AppStrings.isEnglish(translationLanguage)
+                    val cardSubFont = if (isEng) com.example.ui.theme.TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
                     Text(
-                        text = "${surah.totalAyahs} আয়াত • পারা ${surah.startJuz}",
+                        text = if (isEng) "${surah.totalAyahs} Verses • Juz ${surah.startJuz}" else "${surah.totalAyahs} আয়াত • পারা ${surah.startJuz}",
+                        fontFamily = cardSubFont,
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -667,18 +751,27 @@ fun VerticalSurahCard(
             ) {
                 Text(
                     text = surah.nameArabic,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontFamily = com.example.ui.theme.QuranArabicFontFamily,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.primary
                 )
 
+                val isEng = AppStrings.isEnglish(translationLanguage)
+                val badgeFont = if (isEng) com.example.ui.theme.TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
                 Surface(
                     shape = RoundedCornerShape(4.dp),
                     color = if (surah.revelationType == RevelationType.MECCAN) ArabicAccentGold.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
                     modifier = Modifier.padding(top = 2.dp)
                 ) {
+                    val revText = if (surah.revelationType == RevelationType.MECCAN) {
+                        if (isEng) "Meccan" else "মক্কী"
+                    } else {
+                        if (isEng) "Medinan" else "মাদানী"
+                    }
                     Text(
-                        text = if (surah.revelationType == RevelationType.MECCAN) "মক্কী" else "মাদানী",
+                        text = revText,
+                        fontFamily = badgeFont,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (surah.revelationType == RevelationType.MECCAN) ArabicAccentGold else MaterialTheme.colorScheme.primary,
@@ -691,12 +784,18 @@ fun VerticalSurahCard(
 }
 
 @Composable
-fun JuzTabContent(onSelectJuz: (JuzInfo) -> Unit) {
+fun JuzTabContent(
+    translationLanguage: TranslationDisplayMode = TranslationDisplayMode.BOTH,
+    onSelectJuz: (JuzInfo) -> Unit
+) {
     val juzList = JuzCatalog.juzList
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) com.example.ui.theme.TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
 
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
-            text = "পারা নির্বাচন করুন (১ হতে ৩০):",
+            text = AppStrings.juzHeader(translationLanguage),
+            fontFamily = font,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.primary,
@@ -715,7 +814,8 @@ fun JuzTabContent(onSelectJuz: (JuzInfo) -> Unit) {
                     modifier = Modifier.clickable { onSelectJuz(juz) }
                 ) {
                     Text(
-                        text = "পারা ${juz.number}",
+                        text = AppStrings.juzTitle(translationLanguage, juz.number),
+                        fontFamily = font,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -760,6 +860,7 @@ fun JuzTabContent(onSelectJuz: (JuzInfo) -> Unit) {
                                     text = "${juz.number}",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
+                                    fontFamily = font,
                                     color = MaterialTheme.colorScheme.secondary
                                 )
                             }
@@ -767,13 +868,21 @@ fun JuzTabContent(onSelectJuz: (JuzInfo) -> Unit) {
                             Spacer(modifier = Modifier.width(12.dp))
 
                             Column {
+                                val juzTitleText = if (isEng) "Juz ${juz.number} - ${juz.nameEnglish}" else "পারা ${juz.number} - ${juz.nameBangla}"
+                                val juzRangeText = if (isEng) {
+                                    "From ${juz.startSurahName} (Verse ${juz.startAyah}) to ${juz.endSurahName} (Verse ${juz.endAyah})"
+                                } else {
+                                    "শুরু: ${juz.startSurahName} (আয়াত ${juz.startAyah}) হতে ${juz.endSurahName} (আয়াত ${juz.endAyah})"
+                                }
                                 Text(
-                                    text = "পারা ${juz.number} - ${juz.nameBangla}",
+                                    text = juzTitleText,
                                     fontWeight = FontWeight.Bold,
+                                    fontFamily = font,
                                     fontSize = 15.sp
                                 )
                                 Text(
-                                    text = "শুরু: ${juz.startSurahName} (আয়াত ${juz.startAyah})",
+                                    text = juzRangeText,
+                                    fontFamily = font,
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -782,8 +891,9 @@ fun JuzTabContent(onSelectJuz: (JuzInfo) -> Unit) {
 
                         Text(
                             text = juz.nameArabic,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontFamily = com.example.ui.theme.QuranArabicFontFamily,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Normal,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -796,9 +906,13 @@ fun JuzTabContent(onSelectJuz: (JuzInfo) -> Unit) {
 @Composable
 fun BookmarksTabContent(
     bookmarks: List<BookmarkEntity>,
+    translationLanguage: TranslationDisplayMode = TranslationDisplayMode.BOTH,
     onSelectBookmark: (BookmarkEntity) -> Unit,
     onDeleteBookmark: (BookmarkEntity) -> Unit
 ) {
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) com.example.ui.theme.TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
+
     if (bookmarks.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -813,14 +927,16 @@ fun BookmarksTabContent(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "কোনো সংরক্ষিত বুকমার্ক নেই",
+                    text = AppStrings.noBookmarks(translationLanguage),
+                    fontFamily = font,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "সূরা পড়ার সময় বুকমার্ক আইকনে ট্যাপ করে আয়াত সংরক্ষণ করুন",
+                    text = AppStrings.noBookmarksHint(translationLanguage),
+                    fontFamily = font,
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
@@ -854,7 +970,13 @@ fun BookmarksTabContent(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "${bookmark.surahNameEnglish} (${bookmark.surahNameBangla}) • আয়াত ${bookmark.ayahNumber}",
+                                text = AppStrings.bookmarkAyahHeader(
+                                    mode = translationLanguage,
+                                    surahEng = bookmark.surahNameEnglish,
+                                    surahBan = bookmark.surahNameBangla,
+                                    ayahNum = bookmark.ayahNumber
+                                ),
+                                fontFamily = font,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.primary
@@ -875,16 +997,23 @@ fun BookmarksTabContent(
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = bookmark.textArabic,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = com.example.ui.theme.QuranArabicFontFamily,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Normal,
                             textAlign = TextAlign.Right,
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.fillMaxWidth()
                         )
 
                         Spacer(modifier = Modifier.height(6.dp))
+                        val transText = if (isEng) {
+                            bookmark.translationEnglish.ifEmpty { bookmark.translationBangla }
+                        } else {
+                            bookmark.translationBangla
+                        }
                         Text(
-                            text = bookmark.translationBangla,
+                            text = transText,
+                            fontFamily = font,
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2,

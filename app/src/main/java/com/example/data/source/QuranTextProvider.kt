@@ -1,19 +1,121 @@
 package com.example.data.source
 
+import android.content.Context
+import com.example.QuranApplication
 import com.example.data.model.Ayah
 import com.example.data.model.Word
+import org.json.JSONArray
+import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 object QuranTextProvider {
 
-    fun getAyahsForSurah(surahNumber: Int): List<Ayah> {
-        val predefined = getPredefinedSurahAyahs(surahNumber)
-        if (predefined.isNotEmpty()) return predefined
+    private val surahCache = ConcurrentHashMap<Int, List<Ayah>>()
 
-        // Generate full surah structure for any of the 114 surahs
-        val surah = SurahCatalog.getSurah(surahNumber) ?: return emptyList()
-        return (1..surah.totalAyahs).map { ayahNum ->
-            generateAyahForSurah(surahNumber, ayahNum, surah.nameEnglish, surah.nameBangla)
+    fun getAyahsForSurah(surahNumber: Int, context: Context? = null): List<Ayah> {
+        surahCache[surahNumber]?.let { return it }
+
+        // 1. Try loading from bundled authentic assets
+        val fromAssets = loadSurah(surahNumber, context)
+        if (fromAssets.isNotEmpty()) {
+            surahCache[surahNumber] = fromAssets
+            return fromAssets
         }
+
+        // 2. Predefined fallback if assets cannot be accessed
+        val predefined = getPredefinedSurahAyahs(surahNumber)
+        if (predefined.isNotEmpty()) {
+            surahCache[surahNumber] = predefined
+            return predefined
+        }
+
+        return emptyList()
+    }
+
+    private fun loadSurah(surahNumber: Int, context: Context?): List<Ayah> {
+        val fileName = "surahs/surah_$surahNumber.json"
+
+        // Try via Android Context Assets
+        val ctx = context ?: try { QuranApplication.instance } catch (_: Throwable) { null }
+        if (ctx != null) {
+            try {
+                val jsonStr = ctx.assets.open(fileName).bufferedReader(Charsets.UTF_8).use { it.readText() }
+                val parsed = parseAyahsJson(jsonStr)
+                if (parsed.isNotEmpty()) return parsed
+            } catch (_: Exception) {}
+        }
+
+        // Try via direct file path (useful in unit tests or local execution)
+        val candidatePaths = listOf(
+            "app/src/main/assets/$fileName",
+            "src/main/assets/$fileName",
+            "assets/$fileName"
+        )
+        for (path in candidatePaths) {
+            val file = File(path)
+            if (file.exists()) {
+                try {
+                    val jsonStr = file.readText(Charsets.UTF_8)
+                    val parsed = parseAyahsJson(jsonStr)
+                    if (parsed.isNotEmpty()) return parsed
+                } catch (_: Exception) {}
+            }
+        }
+
+        return emptyList()
+    }
+
+    private fun parseAyahsJson(jsonStr: String): List<Ayah> {
+        val jsonArray = JSONArray(jsonStr)
+        val list = ArrayList<Ayah>(jsonArray.length())
+        for (i in 0 until jsonArray.length()) {
+            val obj = jsonArray.getJSONObject(i)
+            val number = obj.getInt("number")
+            val globalNumber = obj.getInt("globalNumber")
+            val textArabic = obj.getString("textArabic")
+            val translationEnglish = obj.getString("translationEnglish")
+            val translationBangla = obj.getString("translationBangla")
+            val transliterationBangla = obj.optString("transliterationBangla", "")
+            val tafsirEnglish = obj.optString("tafsirEnglish", "")
+            val tafsirBangla = obj.optString("tafsirBangla", "")
+            val audioUrl = obj.getString("audioUrl")
+            val juz = obj.optInt("juz", 1)
+            val sajdah = obj.optBoolean("sajdah", false)
+
+            val wordsArray = obj.optJSONArray("words")
+            val wordsList = ArrayList<Word>()
+            if (wordsArray != null) {
+                for (w in 0 until wordsArray.length()) {
+                    val wObj = wordsArray.getJSONObject(w)
+                    wordsList.add(
+                        Word(
+                            arabic = wObj.getString("arabic"),
+                            transliteration = wObj.optString("transliteration", ""),
+                            english = wObj.optString("english", ""),
+                            bangla = wObj.optString("bangla", "")
+                        )
+                    )
+                }
+            }
+
+            list.add(
+                Ayah(
+                    number = number,
+                    globalNumber = globalNumber,
+                    textArabic = textArabic,
+                    words = wordsList,
+                    translationEnglish = translationEnglish,
+                    translationBangla = translationBangla,
+                    transliterationBangla = transliterationBangla,
+                    tafsirEnglish = tafsirEnglish,
+                    tafsirBangla = tafsirBangla,
+                    audioUrl = audioUrl,
+                    juz = juz,
+                    sajdah = sajdah
+                )
+            )
+        }
+        return list
     }
 
     private fun getPredefinedSurahAyahs(surahNumber: Int): List<Ayah> {
@@ -534,40 +636,4 @@ object QuranTextProvider {
             "https://everyayah.com/data/Alafasy_128kbps/036004.mp3", 22
         )
     )
-
-    // Generator for all 114 surahs to ensure seamless full coverage with word-by-word
-    private fun generateAyahForSurah(surahNum: Int, ayahNum: Int, surahNameEn: String, surahNameBn: String): Ayah {
-        val sPad = surahNum.toString().padStart(3, '0')
-        val aPad = ayahNum.toString().padStart(3, '0')
-        val audio = "https://everyayah.com/data/Alafasy_128kbps/$sPad$aPad.mp3"
-
-        // Authentic representative arabic text tokens and meanings
-        val baseWords = listOf(
-            Word("وَإِذَا", "ওয়া ইযা", "And when", "এবং যখন"),
-            Word("قَالَ", "ক্বালা", "said", "বললেন"),
-            Word("اللَّهُ", "আল্লাহু", "Allah", "আল্লাহ"),
-            Word("لِلْمُؤْمِنِينَ", "লিল-মু'মিনীনা", "to the believers", "মুমিনদের"),
-            Word("اتَّقُوا", "ইত্তাক্বু", "fear / be mindful", "তোমরা তাকওয়া অবলম্বন কর"),
-            Word("رَبَّكُمْ", "রব্বাকুম", "your Lord", "তোমাদের রবের")
-        )
-
-        val arabicText = when (ayahNum) {
-            1 -> if (surahNum != 9) "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ۝$ayahNum" else "بَرَاءَةٌ مِّنَ اللَّهِ وَرَسُولِهِ ۝$ayahNum"
-            else -> "وَلَقَدْ آتَيْنَاكُمْ آيَاتٍ بَيِّنَاتٍ وَذِكْرًا لِّلْمُتَّقِينَ ۝$ayahNum"
-        }
-
-        return Ayah(
-            number = ayahNum,
-            globalNumber = surahNum * 100 + ayahNum,
-            textArabic = arabicText,
-            words = baseWords,
-            translationEnglish = "Surah $surahNameEn, Verse $ayahNum: Indeed, in this verse Allah reminds the believers to maintain righteousness, observe prayers, and reflect upon His boundless signs.",
-            translationBangla = "সূরা $surahNameBn, আয়াত $ayahNum: নিশ্চয়ই আল্লাহ এই আয়াতে মুমিনদের সত্যের পথে অবিচল থাকার, নিয়মিত সালাত কায়েম করার এবং মহান আল্লাহর অসংখ্য নিদর্শনের প্রতি গভীর চিন্তাভাবনা করার নির্দেশ দিচ্ছেন।",
-            transliterationBangla = "সূরা $surahNameBn আয়াত $ayahNum পাঠ ও তাদাব্বুর",
-            tafsirEnglish = "Tafsir for Surah $surahNameEn (Ayah $ayahNum): Scholars of Quranic exegesis elucidate that this verse teaches deep mindfulness (Taqwa), gratitude for Allah's countless gifts, and adherence to Islamic ethics.",
-            tafsirBangla = "তাফসীর ও শানে নুযূল (সূরা $surahNameBn, আয়াত $ayahNum): বিজ্ঞ মুফাসসিরগণ উল্লেখ করেছেন যে এই আয়াতটিতে তাকওয়া অর্জন, সৎকাজের আদেশ ও মন্দ কাজ থেকে বিরত থাকার শাশ্বত শিক্ষা বিধৃত হয়েছে।",
-            audioUrl = audio,
-            juz = SurahCatalog.getSurah(surahNum)?.startJuz ?: 1
-        )
-    }
 }

@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -62,12 +63,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.components.SurahReadingThemeCardsRow
 import com.example.ui.theme.ArabicAccentGold
+import com.example.ui.theme.TimesRomanFontFamily
+import com.example.ui.util.AppStrings
 import com.example.ui.viewmodel.AvailableReciters
 import com.example.ui.viewmodel.QuranBgColor
 import com.example.ui.viewmodel.QuranTextColor
 import com.example.ui.viewmodel.QuranViewModel
 import com.example.ui.viewmodel.ReaderSettings
+import com.example.ui.viewmodel.ReadingTheme
 import com.example.ui.viewmodel.Reciter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,14 +85,18 @@ fun SettingsScreen(
 
     val settings by viewModel.readerSettings.collectAsState()
     val isNightMode by viewModel.isNightMode.collectAsState()
+    val translationLanguage by viewModel.translationLanguage.collectAsState()
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) com.example.ui.theme.TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
     var selectedTab by remember { mutableIntStateOf(0) }
 
     val tabs = listOf(
-        Pair("🎙️ তিলাওয়াতকারী", Icons.Default.Mic),
-        Pair("📖 অনুবাদ", Icons.Default.MenuBook),
-        Pair("🔤 হরফের আকার", Icons.Default.FormatSize),
-        Pair("🎨 পটভূমি রঙ", Icons.Default.Palette),
-        Pair("✍️ টেক্সট রঙ", Icons.Default.FormatColorText)
+        Pair(AppStrings.settingsTabTheme(translationLanguage), Icons.Default.Palette),
+        Pair(AppStrings.settingsTabReciter(translationLanguage), Icons.Default.Mic),
+        Pair(AppStrings.settingsTabTranslation(translationLanguage), Icons.Default.MenuBook),
+        Pair(AppStrings.settingsTabFontSize(translationLanguage), Icons.Default.FormatSize),
+        Pair(AppStrings.settingsTabBg(translationLanguage), Icons.Default.Palette),
+        Pair(AppStrings.settingsTabTextColor(translationLanguage), Icons.Default.FormatColorText)
     )
 
     Scaffold(
@@ -105,13 +114,15 @@ fun SettingsScreen(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "কুরআন সেটিংস (Settings)",
+                            text = AppStrings.settingsTitle(translationLanguage),
+                            fontFamily = font,
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "পাঠ ও তিলাওয়াত কাস্টমাইজেশন",
+                            text = AppStrings.settingsSubtitle(translationLanguage),
+                            fontFamily = font,
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -191,26 +202,58 @@ fun SettingsScreen(
                     .padding(16.dp)
             ) {
                 when (selectedTab) {
-                    0 -> FullReciterSection(
+                    0 -> Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = if (isEng) "Surah Reading Themes" else "সূরা পঠন থিম",
+                                fontFamily = font,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = if (isEng) "3 comfortable background modes while reading (Paper, Dark, and White/Modern):" else "পঠনকালীন ৩টি বিশেষ ব্যাকগ্রাউন্ড মোড (কাগজ/Paper, কালো/Dark এবং সাদা/Modern):",
+                                fontFamily = font,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
+                            )
+                            SurahReadingThemeCardsRow(
+                                selectedTheme = settings.selectedReadingTheme,
+                                onSelectTheme = { viewModel.selectReadingTheme(it) }
+                            )
+                        }
+                    }
+                    1 -> FullReciterSection(
                         selectedReciter = settings.selectedReciter,
+                        translationLanguage = translationLanguage,
                         onSelectReciter = { reciter ->
                             viewModel.selectReciter(reciter)
                         }
                     )
-                    1 -> FullTranslationsSection(
+                    2 -> FullTranslationsSection(
                         settings = settings,
+                        translationLanguage = translationLanguage,
                         onUpdate = { viewModel.updateReaderSettings(it) }
                     )
-                    2 -> FullFontSizeSection(
+                    3 -> FullFontSizeSection(
                         settings = settings,
+                        translationLanguage = translationLanguage,
                         onUpdate = { viewModel.updateReaderSettings(it) }
                     )
-                    3 -> FullBackgroundColorsSection(
+                    4 -> FullBackgroundColorsSection(
                         selectedBg = settings.selectedBgColor,
+                        translationLanguage = translationLanguage,
                         onSelectBg = { viewModel.selectBgColor(it) }
                     )
-                    4 -> FullTextColorsSection(
+                    5 -> FullTextColorsSection(
                         selectedTextColor = settings.selectedTextColor,
+                        translationLanguage = translationLanguage,
                         onSelectTextColor = { viewModel.selectTextColor(it) }
                     )
                 }
@@ -218,7 +261,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // Bottom Live Preview Card
-                FullLivePreviewCard(settings = settings)
+                FullLivePreviewCard(settings = settings, translationLanguage = translationLanguage)
 
                 Spacer(modifier = Modifier.height(30.dp))
             }
@@ -232,8 +275,12 @@ fun SettingsScreen(
 @Composable
 private fun FullReciterSection(
     selectedReciter: Reciter,
+    translationLanguage: TranslationDisplayMode = TranslationDisplayMode.BOTH,
     onSelectReciter: (Reciter) -> Unit
 ) {
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -242,13 +289,15 @@ private fun FullReciterSection(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "বিশ্বখ্যাত ক্বারী নির্বাচন করুন (Reciters)",
+                text = if (isEng) "Select World-Renowned Reciter" else "বিশ্বখ্যাত ক্বারী নির্বাচন করুন (Reciters)",
+                fontFamily = font,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "নির্বাচিত ক্বারীর কণ্ঠেই পূর্ণ কুরআন তিলাওয়াত বাজানো হবে।",
+                text = if (isEng) "Full Quran recitation will be played in the selected reciter's voice." else "নির্বাচিত ক্বারীর কণ্ঠেই পূর্ণ কুরআন তিলাওয়াত বাজানো হবে।",
+                fontFamily = font,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -283,22 +332,26 @@ private fun FullReciterSection(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = reciter.nameBangla,
+                                    text = if (isEng) reciter.nameEnglish else reciter.nameBangla,
+                                    fontFamily = font,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = reciter.nameEnglish,
+                                    text = if (isEng) reciter.subtext else reciter.nameEnglish,
+                                    fontFamily = font,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
-                                Text(
-                                    text = reciter.subtext,
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                if (!isEng) {
+                                    Text(
+                                        text = reciter.subtext,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
 
@@ -308,7 +361,8 @@ private fun FullReciterSection(
                                 color = MaterialTheme.colorScheme.primary
                             ) {
                                 Text(
-                                    text = "সক্রিয়",
+                                    text = if (isEng) "Active" else "সক্রিয়",
+                                    fontFamily = font,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimary,
@@ -329,8 +383,12 @@ private fun FullReciterSection(
 @Composable
 private fun FullTranslationsSection(
     settings: ReaderSettings,
+    translationLanguage: TranslationDisplayMode = TranslationDisplayMode.BOTH,
     onUpdate: ((ReaderSettings) -> ReaderSettings) -> Unit
 ) {
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -339,13 +397,15 @@ private fun FullTranslationsSection(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "অনুবাদ ও শব্দার্থ সেটিংস (Translations)",
+                text = if (isEng) "Translations & Word-by-Word" else "অনুবাদ ও শব্দার্থ সেটিংস (Translations)",
+                fontFamily = font,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "আপনার সুবিধামতো প্রতিটি আয়াতের সাথে প্রদর্শিত তথ্য কাস্টমাইজ করুন।",
+                text = if (isEng) "Customize the information and meanings displayed with each verse." else "আপনার সুবিধামতো প্রতিটি আয়াতের সাথে প্রদর্শিত তথ্য কাস্টমাইজ করুন।",
+                fontFamily = font,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -353,36 +413,40 @@ private fun FullTranslationsSection(
             Spacer(modifier = Modifier.height(14.dp))
 
             FullScreenSwitchRow(
-                title = "শব্দার্থে অর্থ (Word by Word Meaning)",
-                subtitle = "প্রতিটি আরবি শব্দের সরাসরি নিচে তার বাংলা বা ইংরেজি অর্থ প্রদর্শন",
+                title = if (isEng) "Word by Word Meaning" else "শব্দার্থে অর্থ (Word by Word Meaning)",
+                subtitle = if (isEng) "Shows Bangla/English meaning directly underneath each Arabic word without boxes" else "প্রতিটি আরবি শব্দের সরাসরি নিচে তার বাংলা বা ইংরেজি অর্থ প্রদর্শন",
                 checked = settings.showWordByWord,
+                translationLanguage = translationLanguage,
                 onCheckedChange = { onUpdate { s -> s.copy(showWordByWord = it) } }
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.surfaceVariant)
 
             FullScreenSwitchRow(
-                title = "বাংলা অনুবাদ (Bangla Sentence Translation)",
-                subtitle = "সহজ ও প্রাঞ্জল ভাষায় পূর্ণ আয়াতের বাংলা অর্থ",
+                title = if (isEng) "Bangla Sentence Translation" else "বাংলা অনুবাদ (Bangla Sentence Translation)",
+                subtitle = if (isEng) "Clear and easy Bangla meaning for the full verse" else "সহজ ও প্রাঞ্জল ভাষায় পূর্ণ আয়াতের বাংলা অর্থ",
                 checked = settings.showBanglaTranslation,
+                translationLanguage = translationLanguage,
                 onCheckedChange = { onUpdate { s -> s.copy(showBanglaTranslation = it) } }
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.surfaceVariant)
 
             FullScreenSwitchRow(
-                title = "English Translation",
-                subtitle = "Sahih International authentic English meaning",
+                title = if (isEng) "English Translation" else "English Translation (ইংরেজি অনুবাদ)",
+                subtitle = if (isEng) "Sahih International authentic English translation" else "Sahih International authentic English meaning",
                 checked = settings.showEnglishTranslation,
+                translationLanguage = translationLanguage,
                 onCheckedChange = { onUpdate { s -> s.copy(showEnglishTranslation = it) } }
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.surfaceVariant)
 
             FullScreenSwitchRow(
-                title = "উচ্চারণ (Bangla Transliteration)",
-                subtitle = "বাংলা বর্ণমালায় সহীহ কুরআন পাঠের উচ্চারণ সহায়িকা",
+                title = if (isEng) "Transliteration" else "উচ্চারণ (Bangla Transliteration)",
+                subtitle = if (isEng) "Pronunciation guide in Bangla alphabet" else "বাংলা বর্ণমালায় সহীহ কুরআন পাঠের উচ্চারণ সহায়িকা",
                 checked = settings.showBanglaTransliteration,
+                translationLanguage = translationLanguage,
                 onCheckedChange = { onUpdate { s -> s.copy(showBanglaTransliteration = it) } }
             )
         }
@@ -395,8 +459,12 @@ private fun FullTranslationsSection(
 @Composable
 private fun FullFontSizeSection(
     settings: ReaderSettings,
+    translationLanguage: TranslationDisplayMode = TranslationDisplayMode.BOTH,
     onUpdate: ((ReaderSettings) -> ReaderSettings) -> Unit
 ) {
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -405,13 +473,15 @@ private fun FullFontSizeSection(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "হরফের আকার নিয়ন্ত্রণ (Font Size)",
+                text = if (isEng) "Font Size Control" else "হরফের আকার নিয়ন্ত্রণ (Font Size)",
+                fontFamily = font,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "পড়ার সুবিধার জন্য আরবি আয়াত ও অনুবাদের হরফের আকার সামঞ্জস্য করুন।",
+                text = if (isEng) "Adjust the size of Arabic verses and translations for comfortable reading." else "পড়ার সুবিধার জন্য আরবি আয়াত ও অনুবাদের হরফের আকার সামঞ্জস্য করুন।",
+                fontFamily = font,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -424,7 +494,8 @@ private fun FullFontSizeSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "আরবি হরফের আকার:",
+                    text = if (isEng) "Arabic Font Size:" else "আরবি হরফের আকার:",
+                    fontFamily = font,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp
                 )
@@ -434,6 +505,7 @@ private fun FullFontSizeSection(
                 ) {
                     Text(
                         text = "${settings.arabicFontSizeSp.toInt()} sp",
+                        fontFamily = font,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.primary,
@@ -456,7 +528,8 @@ private fun FullFontSizeSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "অনুবাদ ও উচ্চারণের আকার:",
+                    text = if (isEng) "Translation & Pronunciation Size:" else "অনুবাদ ও উচ্চারণের আকার:",
+                    fontFamily = font,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp
                 )
@@ -466,6 +539,7 @@ private fun FullFontSizeSection(
                 ) {
                     Text(
                         text = "${settings.translationFontSizeSp.toInt()} sp",
+                        fontFamily = font,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.secondary,
@@ -489,8 +563,12 @@ private fun FullFontSizeSection(
 @Composable
 private fun FullBackgroundColorsSection(
     selectedBg: QuranBgColor,
+    translationLanguage: TranslationDisplayMode = TranslationDisplayMode.BOTH,
     onSelectBg: (QuranBgColor) -> Unit
 ) {
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -499,13 +577,15 @@ private fun FullBackgroundColorsSection(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "পৃষ্ঠার পটভূমি রঙ (Background Colours)",
+                text = if (isEng) "Page Background Colors" else "পৃষ্ঠার পটভূমি রঙ (Background Colours)",
+                fontFamily = font,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "দীর্ঘক্ষণ পাঠে চোখের সুরক্ষার জন্য আরামদায়ক পৃষ্ঠার পটভূমি নির্বাচন করুন।",
+                text = if (isEng) "Select a comfortable background color to protect your eyes during extended reading." else "দীর্ঘক্ষণ পাঠে চোখের সুরক্ষার জন্য আরামদায়ক পৃষ্ঠার পটভূমি নির্বাচন করুন।",
+                fontFamily = font,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -554,13 +634,15 @@ private fun FullBackgroundColorsSection(
 
                             Column {
                                 Text(
-                                    text = bgColor.labelBangla,
+                                    text = if (isEng) bgColor.labelEnglish else bgColor.labelBangla,
+                                    fontFamily = font,
                                     fontSize = 14.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = bgColor.labelEnglish,
+                                    text = if (isEng) bgColor.name else bgColor.labelEnglish,
+                                    fontFamily = font,
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -573,7 +655,8 @@ private fun FullBackgroundColorsSection(
                                 color = MaterialTheme.colorScheme.primary
                             ) {
                                 Text(
-                                    text = "নির্বাচিত",
+                                    text = if (isEng) "Selected" else "নির্বাচিত",
+                                    fontFamily = font,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimary,
@@ -594,8 +677,12 @@ private fun FullBackgroundColorsSection(
 @Composable
 private fun FullTextColorsSection(
     selectedTextColor: QuranTextColor,
+    translationLanguage: TranslationDisplayMode = TranslationDisplayMode.BOTH,
     onSelectTextColor: (QuranTextColor) -> Unit
 ) {
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -604,13 +691,15 @@ private fun FullTextColorsSection(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "অক্ষরের টেক্সট রঙ (Text Colours)",
+                text = if (isEng) "Arabic Calligraphy Text Colors" else "অক্ষরের টেক্সট রঙ (Text Colours)",
+                fontFamily = font,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "আরবি হরফের জন্য আপনার পছন্দের ক্যালিগ্রাফিক কালার থিম বেছে নিন।",
+                text = if (isEng) "Select your favorite calligraphic accent color for the Arabic verses." else "আরবি হরফের জন্য আপনার পছন্দের ক্যালিগ্রাফিক কালার থিম বেছে নিন।",
+                fontFamily = font,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -659,13 +748,15 @@ private fun FullTextColorsSection(
 
                             Column {
                                 Text(
-                                    text = textColor.labelBangla,
+                                    text = if (isEng) textColor.labelEnglish else textColor.labelBangla,
+                                    fontFamily = font,
                                     fontSize = 14.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = textColor.labelEnglish,
+                                    text = if (isEng) textColor.name else textColor.labelEnglish,
+                                    fontFamily = font,
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -678,7 +769,8 @@ private fun FullTextColorsSection(
                                 color = ArabicAccentGold
                             ) {
                                 Text(
-                                    text = "নির্বাচিত",
+                                    text = if (isEng) "Selected" else "নির্বাচিত",
+                                    fontFamily = font,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.Black,
@@ -697,14 +789,22 @@ private fun FullTextColorsSection(
  * Bottom Live Preview Card
  */
 @Composable
-private fun FullLivePreviewCard(settings: ReaderSettings) {
-    val bg = if (settings.selectedBgColor != QuranBgColor.DEFAULT) settings.selectedBgColor.color else MaterialTheme.colorScheme.surface
-    val textCol = if (settings.selectedTextColor != QuranTextColor.DEFAULT) settings.selectedTextColor.color else MaterialTheme.colorScheme.onSurface
+private fun FullLivePreviewCard(
+    settings: ReaderSettings,
+    translationLanguage: TranslationDisplayMode = TranslationDisplayMode.BOTH
+) {
+    val theme = settings.selectedReadingTheme
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
+    val bg = if (settings.selectedBgColor != QuranBgColor.DEFAULT) settings.selectedBgColor.color else theme.backgroundColor
+    val textCol = if (settings.selectedTextColor != QuranTextColor.DEFAULT) settings.selectedTextColor.color else theme.primaryTextColor
+    val subtextCol = theme.secondaryTextColor
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = bg),
+        border = BorderStroke(1.dp, if (theme == ReadingTheme.DARK) Color(0xFF2C2C2C) else Color(0xFFE5E7EB)),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Column(
@@ -718,26 +818,50 @@ private fun FullLivePreviewCard(settings: ReaderSettings) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "লাইভ প্রিভিউ (Live Preview)",
+                    text = if (isEng) "Live Preview" else "লাইভ প্রিভিউ (Live Preview)",
+                    fontFamily = font,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
 
-                Text(
-                    text = "ক্বারী: ${settings.selectedReciter.nameBangla}",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = theme.borderColor.copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, theme.borderColor),
+                        modifier = Modifier.padding(end = 6.dp)
+                    ) {
+                        Text(
+                            text = theme.title,
+                            fontFamily = font,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = theme.borderColor,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+
+                    val reciterName = if (isEng) settings.selectedReciter.nameEnglish else settings.selectedReciter.nameBangla
+                    Text(
+                        text = "${if (isEng) "Reciter: " else "ক্বারী: "}$reciterName",
+                        fontFamily = font,
+                        fontSize = 11.sp,
+                        color = subtextCol
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
+            val sampleArabicText = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ"
+
             Text(
-                text = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
+                text = sampleArabicText,
+                fontFamily = com.example.ui.theme.QuranArabicFontFamily,
                 fontSize = settings.arabicFontSizeSp.sp,
                 lineHeight = (settings.arabicFontSizeSp * 1.5f).sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
                 textAlign = TextAlign.Right,
                 color = textCol,
                 modifier = Modifier.fillMaxWidth()
@@ -745,7 +869,7 @@ private fun FullLivePreviewCard(settings: ReaderSettings) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (settings.showBanglaTranslation) {
+            if (settings.showBanglaTranslation && !isEng) {
                 Text(
                     text = "পরম করুণাময়, অসীম দয়ালু আল্লাহর নামে শুরু করছি।",
                     fontSize = settings.translationFontSizeSp.sp,
@@ -754,12 +878,13 @@ private fun FullLivePreviewCard(settings: ReaderSettings) {
                 )
             }
 
-            if (settings.showEnglishTranslation) {
+            if (settings.showEnglishTranslation || isEng) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "In the name of Allah, the Entirely Merciful, the Especially Merciful.",
+                    fontFamily = TimesRomanFontFamily,
                     fontSize = (settings.translationFontSizeSp - 1f).sp,
-                    color = textCol.copy(alpha = 0.75f)
+                    color = textCol.copy(alpha = 0.85f)
                 )
             }
         }
@@ -771,8 +896,12 @@ private fun FullScreenSwitchRow(
     title: String,
     subtitle: String,
     checked: Boolean,
+    translationLanguage: TranslationDisplayMode = TranslationDisplayMode.BOTH,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val isEng = AppStrings.isEnglish(translationLanguage)
+    val font = if (isEng) TimesRomanFontFamily else androidx.compose.ui.text.font.FontFamily.Default
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -783,12 +912,14 @@ private fun FullScreenSwitchRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
+                fontFamily = font,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = subtitle,
+                fontFamily = font,
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

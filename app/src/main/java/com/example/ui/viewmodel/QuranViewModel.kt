@@ -11,6 +11,7 @@ import com.example.data.local.LastReadEntity
 import com.example.data.model.Ayah
 import com.example.data.model.JuzInfo
 import com.example.data.model.PrayerTimesDay
+import com.example.data.model.QuranScriptType
 import com.example.data.model.RabbanaDua
 import com.example.data.model.Surah
 import com.example.data.repository.PrayerCalculator
@@ -88,7 +89,9 @@ data class ReaderSettings(
     val translationFontSizeSp: Float = 14f,
     val selectedReciter: Reciter = AvailableReciters[0],
     val selectedBgColor: QuranBgColor = QuranBgColor.DEFAULT,
-    val selectedTextColor: QuranTextColor = QuranTextColor.DEFAULT
+    val selectedTextColor: QuranTextColor = QuranTextColor.DEFAULT,
+    val selectedScriptType: QuranScriptType = QuranScriptType.UTHMANI,
+    val selectedReadingTheme: ReadingTheme = ReadingTheme.PAPER
 )
 
 class QuranViewModel(application: Application) : AndroidViewModel(application) {
@@ -96,6 +99,24 @@ class QuranViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
     private val bookmarkDao = db.bookmarkDao()
     val audioPlayer = QuranAudioPlayer(application)
+
+    // Three Surah Reading Themes: Paper (parchment + black text), Dark (black + white text), White (white + black text)
+    private val _readingTheme = MutableStateFlow(ReadingTheme.PAPER)
+    val readingTheme: StateFlow<ReadingTheme> = _readingTheme.asStateFlow()
+
+    fun selectReadingTheme(theme: ReadingTheme) {
+        _readingTheme.value = theme
+        _readerSettings.value = _readerSettings.value.copy(selectedReadingTheme = theme)
+    }
+
+    // Three Kinds of Quran Types: Indo-Pak, Indonesian Standard, Osmani (Uthmani)
+    private val _selectedScriptType = MutableStateFlow(QuranScriptType.UTHMANI)
+    val selectedScriptType: StateFlow<QuranScriptType> = _selectedScriptType.asStateFlow()
+
+    fun selectScriptType(type: QuranScriptType) {
+        _selectedScriptType.value = type
+        _readerSettings.value = _readerSettings.value.copy(selectedScriptType = type)
+    }
 
     // Day / Night Mode (false = Day mode, true = Night mode)
     private val _isNightMode = MutableStateFlow(false)
