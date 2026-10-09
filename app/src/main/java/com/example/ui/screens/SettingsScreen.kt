@@ -74,6 +74,7 @@ import com.example.ui.viewmodel.QuranViewModel
 import com.example.ui.viewmodel.ReaderSettings
 import com.example.ui.viewmodel.ReadingTheme
 import com.example.ui.viewmodel.Reciter
+import com.example.ui.viewmodel.TranslationDisplayMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
